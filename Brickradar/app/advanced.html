@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>Advanced Analysis — LEGO Tracker</title>
+  <style>
+    :root{--bg:#080c14;--surf:#0d1420;--bord:rgba(99,102,241,0.13);--bord2:rgba(99,102,241,0.35);--text:#e2e8f0;--muted:#475569;--acc:#6366f1;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+    .nav{padding:.9rem 1.5rem;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;background:var(--surf);}
+    .nav a{color:var(--muted);font-size:.78rem;text-decoration:none;} .nav a:hover{color:var(--text);}
+    .tabs{padding:.65rem 1.5rem;border-bottom:1px solid var(--bord);display:flex;gap:.5rem;background:var(--surf);}
+    .tab{padding:.38rem 1rem;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid transparent;color:var(--muted);background:none;}
+    .tab:hover{color:var(--text);border-color:var(--bord);} .tab.active{background:rgba(99,102,241,.15);border-color:var(--acc);color:#c7d2fe;}
+    .panel{display:none;padding:1.5rem;max-width:1600px;margin:0 auto;} .panel.active{display:block;}
+    .card{background:var(--surf);border:1px solid var(--bord);border-radius:12px;padding:1.2rem;margin-bottom:1rem;}
+    .ctitle{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.9rem;}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.2rem;}
+    .kpi{background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1rem;position:relative;overflow:hidden;}
+    .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+    .kpi.c0::before{background:linear-gradient(90deg,#6366f1,#8b5cf6);} .kpi.c1::before{background:linear-gradient(90deg,#10b981,#06b6d4);}
+    .kpi.c2::before{background:linear-gradient(90deg,#f59e0b,#ef4444);} .kpi.c3::before{background:linear-gradient(90deg,#06b6d4,#6366f1);}
+    .klbl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem;}
+    .kval{font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;}
+    .ctrls{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:1rem;}
+    .ctrls input,.ctrls select{background:#0d1420;border:1px solid rgba(99,102,241,.2);color:var(--text);border-radius:7px;padding:.32rem .7rem;font-size:.76rem;font-family:'DM Sans',sans-serif;outline:none;}
+    .ctrls input:focus,.ctrls select:focus{border-color:var(--acc);}
+    .cnt{font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+    .cbox{height:210px;position:relative;}
+    table{width:100%;border-collapse:collapse;}
+    thead th{font-size:.61rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:.48rem .65rem;border-bottom:1px solid rgba(99,102,241,.1);text-align:left;cursor:pointer;white-space:nowrap;user-select:none;}
+    thead th:hover{color:#c7d2fe;}
+    tbody td{font-size:.74rem;padding:.4rem .65rem;border-bottom:1px solid rgba(15,23,42,.8);vertical-align:middle;}
+    tbody tr:last-child td{border-bottom:none;} tbody tr:hover td{background:rgba(99,102,241,.04);}
+    .badge{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.61rem;font-weight:600;font-family:'JetBrains Mono',monospace;}
+    .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0;}
+    .bt{background:rgba(99,102,241,.08);border-radius:3px;height:5px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px;}
+    .bf{height:100%;border-radius:3px;}
+    .empty{text-align:center;padding:3rem;color:var(--muted);font-size:.85rem;}
+    .err{color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.8rem;}
+    .expw{position:relative;display:inline-block;}
+    .expb{background:#0d1420;border:1px solid rgba(99,102,241,.25);color:#94a3b8;border-radius:7px;padding:.35rem .85rem;font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+    .expb:hover{border-color:var(--acc);color:#c7d2fe;}
+    .expm{display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0d1420;border:1px solid rgba(99,102,241,.2);border-radius:10px;min-width:190px;z-index:100;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;}
+    .expm.open{display:block;}
+    .exph{padding:.4rem .75rem;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;border-bottom:1px solid rgba(99,102,241,.1);}
+    .expi{width:100%;text-align:left;padding:.5rem .9rem;font-size:.78rem;color:#94a3b8;background:none;border:none;cursor:pointer;display:block;}
+    .expi:hover{background:rgba(99,102,241,.08);color:#c7d2fe;} .expi.gold{color:#fcd34d;font-weight:600;}
+    ::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px;}
+    @media print{.nav,.tabs,.ctrls,.expw{display:none!important;} .panel{display:block!important;padding:.5rem;}
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} @page{margin:.8cm;size:A4 landscape;}}
+  .theme-btn.active { border-color: var(--acc, #6366f1) !important; box-shadow: 0 0 0 2px var(--acc, #6366f1); }
+  </style>
+  <script src="/static/theme.js"></script>
+</head>
+<body>
+
+<div class="nav">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <a href="/">← Dashboard</a><span style="color:#1e293b">|</span>
+    <a href="/analytics">Analytics</a><span style="color:#1e293b">|</span>
+    <span style="font-weight:700;font-size:1.05rem">Advanced Analysis</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <span id="lastUpd" class="mono" style="font-size:.67rem;color:var(--muted)"></span>
+    <div class="expw" id="expWrap">
+      <button class="expb" onclick="toggleExp()">↓ Export</button>
+      <div class="expm" id="expMenu">
+        <div class="exph" id="expLbl">Export Current View</div>
+        <button class="expi" onclick="doExport('csv')">📄 CSV</button>
+        <button class="expi" onclick="doExport('xlsx')">📊 Excel (.xlsx)</button>
+        <hr style="border:none;border-top:1px solid rgba(99,102,241,.1);margin:0">
+        <button class="expi gold" onclick="doExport('pdf')">📄 PDF (Print)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="spread"   onclick="switchTab('spread')">📊 Price Spread</button>
+  <button class="tab"        data-tab="behavior" onclick="switchTab('behavior')">🏪 Store Behavior</button>
+  <button class="tab"        data-tab="deals"    onclick="switchTab('deals')">🔥 Deal Detector</button>
+  <!-- Store color legend — populated dynamically -->
+  <div style="margin-left:auto;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+    <span style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Stores:</span>
+    <div id="storeLegend" style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;"></div>
+    <span id="legendHint" title="Advanced analysis only includes stores where the same product appears in 2+ stores. Stores with unique-only inventory won't appear in comparisons." style="cursor:help;font-size:0.65rem;color:#475569;border:1px solid #334155;border-radius:999px;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">?</span>
+  </div>
+</div>
+
+<!-- PRICE SPREAD -->
+<div class="panel active" id="panel-spread">
+  <div id="err-spread"></div>
+  <div class="kpis">
+    <div class="kpi c0"><div class="klbl">Comparable Items</div><div class="kval" id="k-comp">—</div></div>
+    <div class="kpi c1"><div class="klbl">Avg Spread</div><div class="kval" id="k-avgs">—</div></div>
+    <div class="kpi c2"><div class="klbl">Max Spread</div><div class="kval" id="k-maxs">—</div></div>
+    <div class="kpi c3"><div class="klbl">Avg Spread %</div><div class="kval" id="k-avgp">—</div></div>
+  </div>
+  <div class="ctrls">
+    <input type="text" id="sq" placeholder="Search…" oninput="renderSpread()" style="width:200px">
+    <select id="sbrand" onchange="renderSpread()"><option value="">All Brands</option></select>
+    <select id="stheme" onchange="renderSpread()"><option value="">All Themes</option></select>
+    <select id="smin" onchange="renderSpread()">
+      <option value="2">2+ Stores</option><option value="3">3+ Stores</option>
+      <option value="4">4+ Stores</option><option value="5">5+ Stores</option>
+    </select>
+    <span class="cnt" id="scnt"></span>
+  </div>
+  <div class="card"><div class="ctitle">Top 20 — Biggest Price Spread (green=min, red=spread)</div>
+    <div class="cbox"><canvas id="cSpread"></canvas></div></div>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr>
+      <th onclick="ss('item_number')">Item #</th><th onclick="ss('title')">Title</th>
+      <th onclick="ss('brand')">Brand</th><th onclick="ss('store_count')">Stores</th>
+      <th onclick="ss('min_price')">Min $</th><th onclick="ss('max_price')">Max $</th>
+      <th onclick="ss('spread')">Spread $</th><th onclick="ss('spread_pct')">Spread %</th>
+      <th>Prices by Store</th>
+    </tr></thead><tbody id="tb-spread"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- STORE BEHAVIOR -->
+<div class="panel" id="panel-behavior">
+  <div id="err-behavior"></div>
+  <div class="kpis" id="kpi-beh"></div>
+  <div class="two">
+    <div class="card"><div class="ctitle">% of time store has cheapest price</div><div class="cbox"><canvas id="cCheap"></canvas></div></div>
+    <div class="card"><div class="ctitle">Avg premium % over cheapest competitor</div><div class="cbox"><canvas id="cPrem"></canvas></div></div>
+  </div>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr>
+      <th>Store</th><th>Items</th><th>Avg Price</th>
+      <th>Cheapest #</th><th>Cheapest %</th>
+      <th>Priciest #</th><th>Priciest %</th>
+      <th>Avg Premium</th><th>Profile</th>
+    </tr></thead><tbody id="tb-beh"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- DEAL DETECTOR -->
+<div class="panel" id="panel-deals">
+  <div id="err-deals"></div>
+  <div class="kpis">
+    <div class="kpi c0"><div class="klbl">Exclusive Deals</div><div class="kval" id="k-deals">—</div></div>
+    <div class="kpi c1"><div class="klbl">Avg Discount</div><div class="kval" id="k-adisc">—</div></div>
+    <div class="kpi c2"><div class="klbl">Best Saving</div><div class="kval" id="k-bsave">—</div></div>
+    <div class="kpi c3"><div class="klbl">Stores w/ Deals</div><div class="kval" id="k-dstr">—</div></div>
+  </div>
+  <div class="ctrls">
+    <input type="text" id="dq" placeholder="Search…" oninput="renderDeals()" style="width:200px">
+    <select id="dstore" onchange="renderDeals()"><option value="">All Stores</option></select>
+    <select id="dtheme" onchange="renderDeals()"><option value="">All Themes</option></select>
+    <select id="dmsave" onchange="renderDeals()">
+      <option value="0">Any saving</option><option value="5">$5+</option>
+      <option value="10">$10+</option><option value="20">$20+</option><option value="50">$50+</option>
+    </select>
+    <span class="cnt" id="dcnt"></span>
+  </div>
+  <div class="card"><div class="ctitle">Top 20 — Biggest saving vs other stores</div>
+    <div class="cbox"><canvas id="cDeals"></canvas></div></div>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr>
+      <th onclick="ds('item_number')">Item #</th><th onclick="ds('title')">Title</th>
+      <th onclick="ds('brand')">Brand</th><th onclick="ds('store')">Store</th>
+      <th onclick="ds('price')">Sale $</th><th onclick="ds('compare_at')">Was $</th>
+      <th onclick="ds('discount_pct')">Disc%</th><th onclick="ds('min_other_price')">Others $</th>
+      <th onclick="ds('saving_vs_others')">Saving</th><th>Full Price Stores</th>
+    </tr></thead><tbody id="tb-deals"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody></table>
+  </div>
+</div>
+
+<script>
+// ── Dynamic store colors ───────────────────────────────────────────────────
+// Base palette for known stores — extended automatically for new ones
+const SC_BASE = {
+  'Brickmania':'#6366f1','BRICKSHOP':'#10b981','Bricking':'#f59e0b',
+  'PlayOne':'#ef4444','KLAPTAP':'#8b5cf6','Joueclubliban':'#06b6d4',
+  'Thetoystorelb':'#ec4899'
+};
+const SC_EXTRA = ['#f43f5e','#14b8a6','#f97316','#a855f7','#22c55e','#3b82f6','#eab308','#e879f9'];
+let SC = {...SC_BASE};
+
+async function initStoreColors() {
+  try {
+    const stores = await fetch('/api/stores').then(r=>r.json());
+    // Add DB stores that aren't in base palette
+    let extraIdx = 0;
+    stores.forEach(s => {
+      if (!SC[s.name]) SC[s.name] = SC_EXTRA[extraIdx++ % SC_EXTRA.length];
+    });
+  } catch(e) {}
+  // Render legend
+  const legend = document.getElementById('storeLegend');
+  if (legend) {
+    legend.innerHTML = Object.entries(SC).map(([s,c]) =>
+      `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;color:#94a3b8;">
+        <span style="width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;display:inline-block"></span>${s}
+      </span>`
+    ).join('');
+  }
+}
+const sc = s => SC[s] || '#64748b';
+const $f=v=>v!=null?'$'+Number(v).toFixed(2):'—';
+const $p=v=>v!=null?Number(v).toFixed(1)+'%':'—';
+
+let SD=[],BD=[],DD=[];
+let SS={c:'spread',d:-1}, DS={c:'saving_vs_others',d:-1};
+let CH={};
+let ACT='spread';
+const LOADED={spread:false,behavior:false,deals:false};
+
+// Boot — only load spread immediately
+document.addEventListener('DOMContentLoaded',async()=>{
+  await initStoreColors();
+  await loadTab('spread');
+  try{
+    const k=await fetch('/api/analytics/kpis').then(r=>r.json());
+    if(k.last_updated) document.getElementById('lastUpd').textContent='Updated: '+k.last_updated;
+  }catch(e){}
+});
+
+async function loadTab(tab){
+  if(LOADED[tab]) return;
+  LOADED[tab]=true;
+  try{
+    const res=await fetch('/api/advanced/'+{spread:'price_spread',behavior:'store_behavior',deals:'deal_detector'}[tab]);
+    if(!res.ok) throw new Error('Server error '+res.status);
+    const data=await res.json();
+    if(!Array.isArray(data)) throw new Error('Unexpected response');
+    if(tab==='spread'){SD=data;populateSpreadFilters();renderSpread();}
+    if(tab==='behavior'){BD=data;renderBehavior();}
+    if(tab==='deals'){DD=data;populateDealFilters();renderDeals();}
+    // ── Dynamic AI chips from real data ──────────────────────────────────────
+    try { updateAdvancedAIChips(tab, data); } catch(e) {}
+  }catch(e){
+    LOADED[tab]=false; // allow retry
+    document.getElementById('err-'+tab).innerHTML=`<div class="err">⚠ Failed to load: ${e.message}</div>`;
+    document.getElementById('tb-'+(tab==='behavior'?'beh':(tab==='spread'?'spread':'deals'))).innerHTML=`<tr><td colspan="10" class="empty">Error — check server logs</td></tr>`;
+  }
+}
+
+function updateAdvancedAIChips(tab, data) {
+  if (!window.AI_UPDATE_CHIPS || !data.length) return;
+  let chips = [];
+
+  if (tab === 'spread') {
+    // Widest spread item
+    const top = [...data].sort((a,b)=>b.spread-a.spread)[0];
+    // Cheapest store overall
+    const storeCheapCounts = {};
+    data.forEach(r => { if(r.cheapest_store) storeCheapCounts[r.cheapest_store] = (storeCheapCounts[r.cheapest_store]||0)+1; });
+    const cheapestStore = Object.entries(storeCheapCounts).sort((a,b)=>b[1]-a[1])[0];
+    chips = [
+      top ? `Which sets have the biggest price gap like "${top.title?.slice(0,30)}"?` : null,
+      cheapestStore ? `Why is ${cheapestStore[0]} cheapest most often?` : null,
+      `Which stores have the biggest price differences overall?`,
+      `Are there sets where one store is much cheaper than others?`,
+    ].filter(Boolean);
+
+  } else if (tab === 'behavior') {
+    const sorted = [...data].sort((a,b)=>a.avg_premium_pct-b.avg_premium_pct);
+    const cheapest = sorted[0];
+    const priciest = sorted[sorted.length-1];
+    chips = [
+      cheapest ? `Why is ${cheapest.store} the cheapest store on average?` : null,
+      priciest ? `Is ${priciest.store} worth buying from given its prices?` : null,
+      cheapest && priciest ? `Compare ${cheapest.store} vs ${priciest.store} pricing` : null,
+      `Which store gives the best value for money?`,
+      `Which stores price above market average?`,
+    ].filter(Boolean);
+
+  } else if (tab === 'deals') {
+    const top3 = [...data].sort((a,b)=>b.saving_vs_others-a.saving_vs_others).slice(0,3);
+    chips = [
+      top3[0] ? `Tell me more about the deal on "${top3[0].title?.slice(0,30)}"` : null,
+      top3[1] ? `Is "${top3[1].title?.slice(0,30)}" really a good deal?` : null,
+      `What are the top 5 best deals right now?`,
+      `Which store has the most exclusive deals?`,
+      `Are any LEGO Technic sets on deal today?`,
+    ].filter(Boolean);
+  }
+
+  window.AI_UPDATE_CHIPS(chips.slice(0, 6));
+}
+
+function switchTab(name){
+  ACT=name;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
+  document.getElementById('expLbl').textContent='Export: '+{spread:'Price Spread',behavior:'Store Behavior',deals:'Deal Detector'}[name];
+  // Refresh AI chips for this tab if data already loaded
+  try {
+    if (name==='spread' && SD.length) updateAdvancedAIChips('spread', SD);
+    if (name==='behavior' && BD.length) updateAdvancedAIChips('behavior', BD);
+    if (name==='deals' && DD.length) updateAdvancedAIChips('deals', DD);
+  } catch(e) {}
+  loadTab(name);
+  setTimeout(()=>Object.values(CH).forEach(c=>c&&c.resize()),60);
+}
+
+// ── SPREAD ──────────────────────────────────────────────────────────────────
+function populateSpreadFilters(){
+  const bs=document.getElementById('sbrand'),ts=document.getElementById('stheme');
+  [...new Set(SD.map(r=>r.brand).filter(Boolean))].sort().forEach(v=>bs.add(new Option(v,v)));
+  [...new Set(SD.map(r=>r.theme).filter(Boolean))].sort().forEach(v=>ts.add(new Option(v,v)));
+}
+function getSF(){
+  const q=document.getElementById('sq').value.toLowerCase(),br=document.getElementById('sbrand').value,
+        th=document.getElementById('stheme').value,mn=+document.getElementById('smin').value||2;
+  return SD.filter(r=>r.store_count>=mn&&(!q||(r.item_number+r.title).toLowerCase().includes(q))&&(!br||r.brand===br)&&(!th||r.theme===th));
+}
+function ss(c){SS.d=SS.c===c?-SS.d:-1;SS.c=c;renderSpread();}
+function renderSpread(){
+  let d=getSF().sort((a,b)=>typeof a[SS.c]==='number'?(a[SS.c]-b[SS.c])*SS.d:String(a[SS.c]||'').localeCompare(String(b[SS.c]||''))*SS.d);
+  document.getElementById('scnt').textContent=d.length+' items';
+  document.getElementById('k-comp').textContent=d.length;
+  document.getElementById('k-avgs').textContent=d.length?'$'+(d.reduce((s,r)=>s+r.spread,0)/d.length).toFixed(2):'—';
+  document.getElementById('k-maxs').textContent=d.length?'$'+Math.max(...d.map(r=>r.spread)).toFixed(2):'—';
+  document.getElementById('k-avgp').textContent=d.length?(d.reduce((s,r)=>s+(r.spread_pct||0),0)/d.length).toFixed(1)+'%':'—';
+  const t20=[...d].sort((a,b)=>b.spread-a.spread).slice(0,20);
+  if(CH.sp)CH.sp.destroy();
+  if(t20.length) CH.sp=new Chart(document.getElementById('cSpread'),{type:'bar',data:{labels:t20.map(r=>r.item_number),datasets:[
+    {label:'Min',data:t20.map(r=>r.min_price),backgroundColor:'#10b981',borderRadius:3,stack:'s'},
+    {label:'Spread',data:t20.map(r=>r.spread),backgroundColor:'#ef4444',borderRadius:3,stack:'s'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},
+      tooltip:{callbacks:{title:([c])=>t20[c.dataIndex].title.slice(0,40),label:c=>' $'+Number(c.raw).toFixed(2)}}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'rgba(30,41,59,.5)'}},
+              y:{ticks:{color:'#64748b',font:{size:9},callback:v=>'$'+v},grid:{color:'rgba(30,41,59,.5)'},stacked:true}}}});
+  const allS=[...new Set(SD.flatMap(r=>Object.keys(r.stores||{})))].sort();
+  const tb=document.getElementById('tb-spread');
+  if(!d.length){tb.innerHTML='<tr><td colspan="9" class="empty">No items match filters</td></tr>';return;}
+  tb.innerHTML=d.map(r=>{
+    const sp=allS.map(s=>{const o=r.stores?.[s];if(!o)return'<span style="color:#1e293b">—</span>';
+      const col=o.price===r.min_price?'#10b981':o.price===r.max_price?'#ef4444':'#94a3b8';
+      return`<span style="color:${col};font-weight:${o.price===r.min_price||o.price===r.max_price?700:400}" title="${s}">${$f(o.price)}</span>`;
+    }).join('<span style="color:#1e293b"> / </span>');
+    return`<tr>
+      <td class="mono" style="color:#a5b4fc;font-size:.69rem">${r.item_number}</td>
+      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.title}">${r.title}</td>
+      <td><span class="badge" style="background:rgba(99,102,241,.12);color:#a5b4fc">${r.brand}</span></td>
+      <td class="mono" style="text-align:center;color:#64748b">${r.store_count}</td>
+      <td class="mono" style="color:#10b981;font-weight:700">${$f(r.min_price)}</td>
+      <td class="mono" style="color:#ef4444;font-weight:700">${$f(r.max_price)}</td>
+      <td class="mono" style="color:#f59e0b;font-weight:700">${$f(r.spread)}</td>
+      <td><span class="badge" style="background:${r.spread_pct>20?'rgba(239,68,68,.15)':'rgba(245,158,11,.12)'};color:${r.spread_pct>20?'#fca5a5':'#fcd34d'}">${$p(r.spread_pct)}</span></td>
+      <td class="mono" style="font-size:.69rem;white-space:nowrap">${sp}</td></tr>`;
+  }).join('');
+}
+
+// ── BEHAVIOR ────────────────────────────────────────────────────────────────
+function renderBehavior(){
+  const d=BD,tb=document.getElementById('tb-beh');
+  if(!d.length){document.getElementById('kpi-beh').innerHTML='';tb.innerHTML='<tr><td colspan="9" class="empty">Not enough comparable data yet</td></tr>';return;}
+  document.getElementById('kpi-beh').innerHTML=d.map((r,i)=>`<div class="kpi c${i%4}">
+    <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.35rem"><span class="dot" style="background:${sc(r.store)}"></span><span class="klbl" style="margin:0">${r.store}</span></div>
+    <div class="kval" style="font-size:1.2rem">${r.avg_premium_pct>0?'+':''}${r.avg_premium_pct}%</div>
+    <div style="font-size:.63rem;color:var(--muted);margin-top:.2rem">avg premium · cheapest ${r.cheapest_pct}%</div></div>`).join('');
+  if(CH.ch)CH.ch.destroy();
+  CH.ch=new Chart(document.getElementById('cCheap'),{type:'bar',data:{labels:d.map(r=>r.store),datasets:[{label:'% cheapest',data:d.map(r=>r.cheapest_pct),backgroundColor:d.map(r=>sc(r.store)),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw.toFixed(1)}% of ${d[c.dataIndex].items_carried} items`}}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(30,41,59,.5)'},max:100}}}});
+  const sp2=[...d].sort((a,b)=>a.avg_premium_pct-b.avg_premium_pct);
+  if(CH.pr)CH.pr.destroy();
+  CH.pr=new Chart(document.getElementById('cPrem'),{type:'bar',data:{labels:sp2.map(r=>r.store),datasets:[{label:'Avg Premium %',data:sp2.map(r=>r.avg_premium_pct),backgroundColor:sp2.map(r=>r.avg_premium_pct<=0?'#10b981':r.avg_premium_pct<10?'#f59e0b':'#ef4444'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` +${c.raw.toFixed(1)}% over cheapest`}}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>'+'+v+'%'},grid:{color:'rgba(30,41,59,.5)'}}}}});
+  tb.innerHTML=[...d].sort((a,b)=>a.avg_premium_pct-b.avg_premium_pct).map(r=>`<tr>
+    <td><span class="dot" style="background:${sc(r.store)}"></span><strong>${r.store}</strong></td>
+    <td class="mono" style="color:#64748b">${r.items_carried}</td><td class="mono">${$f(r.avg_price)}</td>
+    <td class="mono" style="color:#10b981">${r.cheapest_count}<span class="bt"><span class="bf" style="width:${r.cheapest_pct}%;background:#10b981"></span></span></td>
+    <td class="mono" style="color:#10b981">${r.cheapest_pct}%</td>
+    <td class="mono" style="color:#ef4444">${r.priciest_count}<span class="bt"><span class="bf" style="width:${r.priciest_pct}%;background:#ef4444"></span></span></td>
+    <td class="mono" style="color:#ef4444">${r.priciest_pct}%</td>
+    <td class="mono" style="color:${r.avg_premium_pct<=0?'#10b981':r.avg_premium_pct<10?'#fcd34d':'#ef4444'};font-weight:700">${r.avg_premium_pct>0?'+':''}${r.avg_premium_pct}%</td>
+    <td>${r.avg_premium_pct<=0?'<span class="badge" style="background:rgba(16,185,129,.15);color:#6ee7b7">🏆 Cheapest</span>':r.avg_premium_pct<5?'<span class="badge" style="background:rgba(99,102,241,.12);color:#a5b4fc">Competitive</span>':r.avg_premium_pct<15?'<span class="badge" style="background:rgba(245,158,11,.12);color:#fcd34d">Moderate</span>':'<span class="badge" style="background:rgba(239,68,68,.12);color:#fca5a5">Premium</span>'}</td></tr>`).join('');
+}
+
+// ── DEALS ────────────────────────────────────────────────────────────────────
+function populateDealFilters(){
+  const ss=document.getElementById('dstore'),ts=document.getElementById('dtheme');
+  [...new Set(DD.map(r=>r.store))].sort().forEach(v=>ss.add(new Option(v,v)));
+  [...new Set(DD.map(r=>r.theme).filter(Boolean))].sort().forEach(v=>ts.add(new Option(v,v)));
+}
+function getDF(){
+  const q=document.getElementById('dq').value.toLowerCase(),st=document.getElementById('dstore').value,
+        th=document.getElementById('dtheme').value,ms=+document.getElementById('dmsave').value||0;
+  return DD.filter(r=>(r.saving_vs_others||0)>=ms&&(!q||(r.item_number+r.title).toLowerCase().includes(q))&&(!st||r.store===st)&&(!th||r.theme===th));
+}
+function ds(c){DS.d=DS.c===c?-DS.d:-1;DS.c=c;renderDeals();}
+function renderDeals(){
+  let d=getDF().sort((a,b)=>typeof a[DS.c]==='number'?(a[DS.c]-b[DS.c])*DS.d:String(a[DS.c]||'').localeCompare(String(b[DS.c]||''))*DS.d);
+  document.getElementById('dcnt').textContent=d.length+' deals';
+  document.getElementById('k-deals').textContent=d.length;
+  document.getElementById('k-adisc').textContent=d.length?(d.reduce((s,r)=>s+(r.discount_pct||0),0)/d.length).toFixed(1)+'%':'—';
+  document.getElementById('k-bsave').textContent=d.length?'$'+Math.max(...d.map(r=>r.saving_vs_others||0)).toFixed(2):'—';
+  document.getElementById('k-dstr').textContent=[...new Set(d.map(r=>r.store))].length;
+  const t20=[...d].sort((a,b)=>(b.saving_vs_others||0)-(a.saving_vs_others||0)).slice(0,20);
+  if(CH.dl)CH.dl.destroy();
+  if(t20.length) CH.dl=new Chart(document.getElementById('cDeals'),{type:'bar',data:{labels:t20.map(r=>r.item_number),datasets:[{label:'Saving',data:t20.map(r=>r.saving_vs_others),backgroundColor:t20.map(r=>sc(r.store)),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:([c])=>t20[c.dataIndex].title.slice(0,40),label:c=>{const r=t20[c.dataIndex];return[`Save $${Number(c.raw).toFixed(2)}`,`${r.store}: $${r.price} vs $${r.min_other_price}`];}}}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#64748b',font:{size:9},callback:v=>'$'+v},grid:{color:'rgba(30,41,59,.5)'}}}}});
+  const tb=document.getElementById('tb-deals');
+  if(!d.length){tb.innerHTML='<tr><td colspan="10" class="empty">No deals match filters</td></tr>';return;}
+  tb.innerHTML=d.map(r=>`<tr>
+    <td class="mono" style="color:#a5b4fc;font-size:.69rem">${r.item_number}</td>
+    <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.title}">${r.title}</td>
+    <td><span class="badge" style="background:rgba(99,102,241,.12);color:#a5b4fc">${r.brand}</span></td>
+    <td><span class="dot" style="background:${sc(r.store)}"></span>${r.store}</td>
+    <td class="mono" style="color:#10b981;font-weight:700">${$f(r.price)}</td>
+    <td class="mono" style="color:#475569;text-decoration:line-through">${$f(r.compare_at)}</td>
+    <td><span class="badge" style="background:rgba(16,185,129,.15);color:#6ee7b7">-${r.discount_pct}%</span></td>
+    <td class="mono" style="color:#94a3b8">${$f(r.min_other_price)}</td>
+    <td class="mono" style="color:#f59e0b;font-weight:700">$${Number(r.saving_vs_others).toFixed(2)}</td>
+    <td class="mono" style="color:#475569;font-size:.68rem">${r.stores_full_price} store${r.stores_full_price!==1?'s':''}</td></tr>`).join('');
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+function toggleExp(){document.getElementById('expMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!document.getElementById('expWrap').contains(e.target))document.getElementById('expMenu').classList.remove('open');});
+function flatRow(r){
+  if(ACT==='spread'){const b={item_number:r.item_number,title:r.title,brand:r.brand,theme:r.theme,store_count:r.store_count,min_price:r.min_price,max_price:r.max_price,spread:r.spread,spread_pct:r.spread_pct};Object.entries(r.stores||{}).forEach(([s,v])=>b[s+'_price']=v.price);return b;}
+  if(ACT==='behavior')return{store:r.store,items_carried:r.items_carried,avg_price:r.avg_price,cheapest_count:r.cheapest_count,cheapest_pct:r.cheapest_pct,priciest_count:r.priciest_count,priciest_pct:r.priciest_pct,avg_premium_pct:r.avg_premium_pct};
+  return{item_number:r.item_number,title:r.title,brand:r.brand,theme:r.theme,store:r.store,price:r.price,compare_at:r.compare_at,discount_pct:r.discount_pct,min_other_price:r.min_other_price,stores_full_price:r.stores_full_price,saving_vs_others:r.saving_vs_others};
+}
+function doExport(fmt){
+  document.getElementById('expMenu').classList.remove('open');
+  if(fmt==='pdf'){window.print();return;}
+  const rows=(ACT==='spread'?getSF():ACT==='behavior'?BD:getDF()).map(r=>flatRow(r));
+  if(!rows.length){alert('No data');return;}
+  const hdrs=Object.keys(rows[0]),ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':',''),fn=`lego_${ACT}_${ts}`;
+  if(fmt==='csv'){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent([hdrs.join(','),...rows.map(r=>hdrs.map(h=>{const v=r[h]??'';return typeof v==='string'&&(v.includes(',')||v.includes('"'))?'"'+v.replace(/"/g,'""')+'"':v;}).join(','))].join('\n'));a.download=fn+'.csv';a.click();}
+  else fetch('/api/advanced/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tab:ACT,rows})}).then(r=>r.blob()).then(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn+'.xlsx';a.click();}).catch(()=>alert('Excel export failed'));
+}
+</script>
+  <script>
+  window.AI_PAGE_CONFIG = {
+    placeholder: "Ask about price spreads, deals, store behavior…",
+    pageHint: "Advanced Analysis",
+    faqs: ["Loading insights…"]
+  };
+  </script>
+  <script src="/static/ai_assistant.js"></script>
+</body>
+</html>

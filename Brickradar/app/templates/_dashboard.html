@@ -1,0 +1,684 @@
+<!doctype html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>LEGO Tracker</title>
+  <style>
+    /* Zoom on modal image */
+    #imgBig { cursor: zoom-in; transition: transform 0.2s ease; transform-origin: center center; }
+    #imgBig.zoomed { cursor: zoom-out; transform: scale(2); }
+
+    /* Smooth table scroll */
+    #tableWrap { overflow: auto; }
+
+    /* Sticky column header inside scrollable div */
+    #tableWrap thead th { position: sticky; top: 0; z-index: 30; }
+  </style>
+  <style>
+    @media print {
+      body { background: #fff !important; color: #111 !important; font-size: 9pt; }
+      .no-print, #refreshModal, form, nav, .flex.flex-wrap.gap-2 { display: none !important; }
+      table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+      thead th { background: #1e293b !important; color: #fff !important; padding: 4px 6px; border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tbody td { padding: 3px 6px; border: 1px solid #ddd; color: #111 !important; background: #fff !important; }
+      tbody tr:nth-child(even) td { background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      img { max-width: 40px; max-height: 40px; }
+      a { color: #4f46e5 !important; text-decoration: none; }
+      .rounded-full, .rounded-lg { border-radius: 3px !important; }
+      @page { margin: 1.5cm; size: A4 landscape; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white" style="padding:1.25rem">
+
+<!-- ── Top bar ── -->
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
+  <div>
+    <h1 class="text-2xl font-bold">LEGO Price Tracker (USD)</h1>
+    <div class="text-xs text-slate-400">
+      Last updated: {{ last_updated or "never" }}
+      <span class="ml-3 inline-flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30">
+          Alerts: {{ alerts_unread }}
+        </span>
+      </span>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 items-center">
+    <a href="/stores"
+      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
+      🏪 Stores
+    </a>
+    <button id="refreshBtn" onclick="doRefresh()"
+      class="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 font-semibold">
+      Refresh
+    </button>
+    <button onclick="markAlertsRead()"
+      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
+      Mark alerts read
+    </button>
+    <div style="position:relative;display:inline-block" id="exportWrap">
+      <button onclick="toggleExportMenu()"
+        class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold flex items-center gap-1.5">
+        &#8595; Export
+      </button>
+      <div id="exportMenu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#1e293b;border:1px solid #334155;border-radius:10px;min-width:160px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.5);overflow:hidden;">
+        <button onclick="doExport('xlsx')" style="width:100%;text-align:left;padding:0.6rem 1rem;font-size:0.83rem;color:#e2e8f0;background:none;border:none;cursor:pointer;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='none'">
+          Excel (.xlsx)
+        </button>
+        <button onclick="doExport('csv')" style="width:100%;text-align:left;padding:0.6rem 1rem;font-size:0.83rem;color:#e2e8f0;background:none;border:none;cursor:pointer;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='none'">
+          CSV
+        </button>
+        <button onclick="doExport('json')" style="width:100%;text-align:left;padding:0.6rem 1rem;font-size:0.83rem;color:#e2e8f0;background:none;border:none;cursor:pointer;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='none'">
+          JSON
+        </button>
+        <hr style="border:none;border-top:1px solid #334155;margin:0.25rem 0">
+        <button onclick="doExportPDF()" style="width:100%;text-align:left;padding:0.6rem 1rem;font-size:0.83rem;color:#e2e8f0;background:none;border:none;cursor:pointer;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='none'">
+          PDF (Print)
+        </button>
+      </div>
+    </div>
+
+<!-- Refresh progress modal -->
+<div id="refreshModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+  <div class="bg-slate-800 border border-slate-600 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <div class="text-sm font-semibold text-slate-200">🔄 Refreshing stores...</div>
+      <button onclick="closeRefreshModal()" class="text-slate-500 hover:text-slate-200 text-lg leading-none">✕</button>
+    </div>
+    <div id="refreshStores" class="space-y-2 mb-4"></div>
+    <div class="w-full bg-slate-700 rounded-full h-2">
+      <div id="refreshBar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+    </div>
+    <div id="refreshStatus" class="text-xs text-slate-400 mt-2 text-center">Starting...</div>
+  </div>
+</div>
+  </div>
+</div>
+
+<!-- ── Filters ── -->
+<form method="get" class="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-3">
+
+  <!-- Row 1: dropdowns -->
+  <div class="flex flex-wrap gap-3 items-end mb-3">
+
+    <div>
+      <label class="text-xs text-slate-300">Item #</label>
+      <input name="search_item" value="{{ search_item }}" placeholder="e.g. 42221"
+        class="mt-1 w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500" />
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Brand</label>
+      <select name="brand" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        {% for b in all_brands %}
+          <option value="{{ b }}" {% if b == selected_brand %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Category</label>
+      <select name="category" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        {% for c in all_categories %}
+          <option value="{{ c }}" {% if c == selected_category %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Theme</label>
+      <select name="theme" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        {% for t in all_themes %}
+          <option value="{{ t }}" {% if t == selected_theme %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Row 2: store checkboxes -->
+  <div class="flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-slate-700/50">
+    <span class="text-xs text-slate-400 font-semibold uppercase tracking-wide">Stores</span>
+    {% for sname in (store_names if store_names else stores) %}
+      <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+        <input type="checkbox" name="stores" value="{{ sname }}"
+          {% if not selected_stores or sname in selected_stores %}checked{% endif %}
+          class="accent-indigo-400 w-3.5 h-3.5">
+        {{ sname }}
+      </label>
+    {% endfor %}
+  </div>
+
+  <!-- Row 3: filters + alerts + per page + apply all on one line -->
+  <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+
+    <span class="text-xs text-slate-400 font-semibold uppercase tracking-wide">Filters</span>
+
+    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input type="checkbox" name="only_deals" value="1" {% if only_deals %}checked{% endif %} class="accent-amber-400">
+      🏷️ Discounts only
+    </label>
+    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input type="checkbox" name="only_instock" value="1" {% if only_instock %}checked{% endif %} class="accent-emerald-400">
+      ✅ In stock only
+    </label>
+    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input type="checkbox" name="only_comparable" value="1" {% if only_comparable %}checked{% endif %} class="accent-indigo-400">
+      ⚖️ Comparable only
+    </label>
+
+    <span class="text-xs text-slate-400 font-semibold uppercase tracking-wide ml-2">Alerts</span>
+
+    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+      <input type="checkbox" name="only_alerts" value="1" {% if only_alerts %}checked{% endif %} class="accent-rose-400">
+      🔔 Show alerts
+    </label>
+    <select name="alert_type" id="alertTypeSelect"
+      class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs"
+      style="display:{% if only_alerts %}inline-block{% else %}none{% endif %}">
+      <option value="all"            {% if alert_type_filter == 'all'            %}selected{% endif %}>All types</option>
+      <option value="price_drop"     {% if alert_type_filter == 'price_drop'     %}selected{% endif %}>💸 Price drops</option>
+      <option value="price_increase" {% if alert_type_filter == 'price_increase' %}selected{% endif %}>📈 Price increases</option>
+      <option value="new_arrival"    {% if alert_type_filter == 'new_arrival'    %}selected{% endif %}>🆕 New arrivals</option>
+      <option value="new_in_store"   {% if alert_type_filter == 'new_in_store'   %}selected{% endif %}>🏪 New in store</option>
+    </select>
+
+    <div class="flex items-center gap-2 ml-auto">
+      <label class="text-xs text-slate-400">Items per page</label>
+      <select name="per_page" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm">
+        {% for n in [50,100,200,250,500,1000] %}
+          <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 font-semibold text-sm">
+        Apply
+      </button>
+    </div>
+
+    <!-- hidden fields -->
+    <input type="hidden" name="page"  id="pageInput"  value="{{ page }}" />
+    <input type="hidden" name="sort"  id="sortInput"  value="{{ sort }}" />
+    <input type="hidden" name="order" id="orderInput" value="{{ order }}" />
+
+    <div class="text-xs text-slate-400 ml-auto">
+      Showing {{ rows|length }} of {{ total }}
+      &nbsp;·&nbsp; Page {{ page }} of {{ total_pages }}
+    </div>
+
+  </div>
+</form>
+
+<!-- ── Pagination bar ── -->
+{% set base = "?category=" ~ selected_category ~ "&theme=" ~ selected_theme ~ "&brand=" ~ selected_brand ~ "&search_item=" ~ search_item %}
+{% for s in selected_stores %}{% set base = base ~ "&stores=" ~ s %}{% endfor %}
+{% set base = base ~ "&only_deals=" ~ (1 if only_deals else 0) ~ "&only_alerts=" ~ (1 if only_alerts else 0) ~ "&only_comparable=" ~ (1 if only_comparable else 0) ~ "&only_instock=" ~ (1 if only_instock else 0) ~ "&alert_type=" ~ alert_type_filter ~ "&per_page=" ~ per_page ~ "&sort=" ~ sort ~ "&order=" ~ order %}
+
+<div class="flex items-center gap-2 mb-3 flex-wrap">
+  {% if page > 1 %}
+    <button type="button" onclick="gotoPage(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">« First</button>
+    <button type="button" onclick="gotoPage({{ page - 1 }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">‹ Prev</button>
+  {% else %}
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">« First</span>
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">‹ Prev</span>
+  {% endif %}
+  <span class="px-3 py-1.5 rounded-lg bg-indigo-600 border border-indigo-500 text-white text-sm font-bold min-w-[2.5rem] text-center">{{ page }}</span>
+  {% if page < total_pages %}
+    <button type="button" onclick="gotoPage({{ page + 1 }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Next ›</button>
+    <button type="button" onclick="gotoPage({{ total_pages }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Last »</button>
+  {% else %}
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">Next ›</span>
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">Last »</span>
+  {% endif %}
+  <span class="text-xs text-slate-400 ml-2">{{ total }} items total</span>
+</div>
+
+<!-- ── Table ── -->
+<div id="tableWrap" style="max-height:72vh; border-radius:1rem; border:1px solid #1e293b;">
+
+{% macro sort_th(label, key) %}
+  {% set next_order = 'asc' %}
+  {% if sort == key and order == 'asc' %}
+    {% set next_order = 'desc' %}
+  {% endif %}
+  <a class="inline-flex items-center gap-1 hover:text-white whitespace-nowrap cursor-pointer"
+     onclick="applySort('{{ key }}', '{{ next_order }}')">
+    {{ label }}
+    {% if sort == key %}
+      <span class="text-[10px] text-slate-400">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>
+    {% endif %}
+  </a>
+{% endmacro %}
+
+<table class="w-full text-sm border-collapse">
+<thead>
+<tr>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">Image</th>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Brand", "brand") }}</th>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Item #", "item") }}</th>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Title", "title") }}</th>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Theme", "theme") }}</th>
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Category", "category") }}</th>
+  {% for s in stores %}
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th(s, "store:" ~ s) }}</th>
+  {% endfor %}
+  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Lowest", "price") }}</th>
+</tr>
+</thead>
+<tbody>
+{% for row in rows %}
+<tr class="border-t border-slate-800/60 hover:bg-slate-800/40 transition-colors">
+
+  <td class="p-3">
+    {% if row.image_url %}
+      <button type="button" class="group"
+              data-img="{{ row.image_proxy }}"
+              data-title="{{ row.title }}"
+              data-images="{{ row.image_list_json | e }}"
+              onclick="openImageFromBtn(this)">
+        <img src="{{ row.image_proxy }}" loading="lazy"
+             class="w-14 h-14 rounded-lg object-cover border border-slate-700 bg-slate-800 group-hover:opacity-80 group-hover:scale-105 transition-all duration-150" />
+      </button>
+    {% else %}
+      <div class="w-14 h-14 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-600 text-xs">—</div>
+    {% endif %}
+  </td>
+
+  <td class="p-3 text-xs text-slate-400 font-medium whitespace-nowrap">{{ row.brand or "LEGO" }}</td>
+  <td class="p-3 font-mono text-slate-300 whitespace-nowrap">{{ row.item_number }}</td>
+  <td class="p-3 max-w-xs">
+    <div class="text-sm leading-snug">{{ row.title }}</div>
+    {% set best_disc_pct = 0 %}
+    {% set best_disc_store = "" %}
+    {% for s in stores %}
+      {% set off = row.stores[s] if s in row.stores else None %}
+      {% if off and off.discount_pct and off.discount_pct > best_disc_pct %}
+        {% set best_disc_pct = off.discount_pct %}
+        {% set best_disc_store = s %}
+      {% endif %}
+    {% endfor %}
+    {% if best_disc_pct > 0 %}
+      <span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+        🏷️ -{{ best_disc_pct }}% @ {{ best_disc_store }}
+      </span>
+    {% endif %}
+
+    {% if row.alert %}
+      {% set at = row.alert.type %}
+      {% set st = row.alert.store %}
+      {% if at == 'price_drop' %}
+        <span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+          💸 -${{ "%.2f"|format(row.alert.old_price - row.alert.new_price) }} @ {{ st }}
+        </span>
+      {% elif at == 'price_increase' %}
+        <span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold">
+          📈 +${{ "%.2f"|format(row.alert.new_price - row.alert.old_price) }} @ {{ st }}
+        </span>
+      {% elif at == 'new_arrival' %}
+        <span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-semibold">
+          🆕 New @ {{ st }}
+        </span>
+      {% elif at == 'new_in_store' %}
+        <span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-semibold">
+          🏪 New @ {{ st }}
+        </span>
+      {% endif %}
+    {% endif %}
+  </td>
+  <td class="p-3 text-slate-300 whitespace-nowrap">{{ row.theme }}</td>
+  <td class="p-3 text-slate-300 whitespace-nowrap">{{ row.category }}</td>
+
+  {% for s in stores %}
+    {% set info = row.stores.get(s) %}
+    <td class="p-3">
+      {% if info %}
+        <div class="flex flex-col gap-0.5">
+          {% if info.price is number %}
+            <div class="font-semibold {% if row.lowest_store == s %}text-emerald-300{% else %}text-white{% endif %}">
+              ${{ "%.2f"|format(info.price) }}
+            </div>
+          {% else %}
+            <div class="text-slate-500">N/A</div>
+          {% endif %}
+          {% if row.compare_at and info.price is number and row.compare_at > info.price %}
+            <div class="text-xs text-slate-500 line-through">${{ "%.2f"|format(row.compare_at) }}</div>
+          {% endif %}
+          {% if info.discount_pct %}
+            <div class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold w-fit">
+              🏷️ -{{ info.discount_pct }}%
+            </div>
+          {% endif %}
+          <div class="text-xs {% if 'out' in (info.availability or '')|lower %}text-rose-400{% else %}text-slate-400{% endif %}">
+            {{ info.availability }}
+          </div>
+          <a class="text-xs text-blue-400 hover:text-blue-300 hover:underline" target="_blank" href="{{ info.link }}">Open ↗</a>
+        </div>
+      {% else %}
+        <span class="text-slate-700">—</span>
+      {% endif %}
+    </td>
+  {% endfor %}
+
+  <td class="p-3">
+    {% if row.lowest_price is number %}
+      <div class="font-bold text-emerald-300">${{ "%.2f"|format(row.lowest_price) }}</div>
+      <div class="text-xs text-slate-400">{{ row.lowest_store }}</div>
+    {% else %}
+      <span class="text-slate-700">—</span>
+    {% endif %}
+  </td>
+
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- ── Pagination bar (bottom) ── -->
+<div class="flex items-center gap-2 mt-3 flex-wrap">
+  {% if page > 1 %}
+    <button type="button" onclick="gotoPage(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">« First</button>
+    <button type="button" onclick="gotoPage({{ page - 1 }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">‹ Prev</button>
+  {% else %}
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">« First</span>
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">‹ Prev</span>
+  {% endif %}
+  <span class="px-3 py-1.5 rounded-lg bg-indigo-600 border border-indigo-500 text-white text-sm font-bold min-w-[2.5rem] text-center">{{ page }}</span>
+  {% if page < total_pages %}
+    <button type="button" onclick="gotoPage({{ page + 1 }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Next ›</button>
+    <button type="button" onclick="gotoPage({{ total_pages }})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Last »</button>
+  {% else %}
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">Next ›</span>
+    <span class="px-3 py-1.5 rounded-lg bg-slate-800/30 border border-slate-700/30 text-slate-600 text-sm font-semibold cursor-not-allowed">Last »</span>
+  {% endif %}
+  <span class="text-xs text-slate-400 ml-2">Page {{ page }} of {{ total_pages }}</span>
+</div>
+
+<!-- ── Image Modal ── -->
+<div id="imgModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+  <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeImage()"></div>
+  <div class="relative z-10 w-[92%] md:w-[72%] max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col" style="max-height:92vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+      <div id="imgTitle" class="text-sm text-slate-200 truncate pr-3 font-medium"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="imgCounter" class="text-xs text-slate-500"></span>
+        <button type="button" onclick="toggleZoom()"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+          id="zoomBtn">🔍 Zoom</button>
+        <button type="button" onclick="closeImage()"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-sm">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Main image + nav arrows -->
+    <div class="relative bg-slate-950 flex items-center justify-center overflow-auto" style="min-height:280px; max-height:calc(92vh - 160px)">
+      <button id="prevBtn" onclick="albumNav(-1)"
+        class="hidden absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white text-xl flex items-center justify-center select-none">
+        ‹
+      </button>
+      <img id="imgBig" src="" alt=""
+           class="rounded-xl border border-slate-800 max-w-full max-h-full object-contain p-3"
+           onclick="toggleZoom()" style="cursor:zoom-in" />
+      <button id="nextBtn" onclick="albumNav(1)"
+        class="hidden absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white text-xl flex items-center justify-center select-none">
+        ›
+      </button>
+    </div>
+
+    <!-- Thumbnail strip -->
+    <div id="thumbStrip" class="flex gap-2 px-4 py-3 border-t border-slate-800 overflow-x-auto shrink-0 bg-slate-900">
+    </div>
+
+    <!-- Keyboard hint -->
+    <div class="px-4 py-2 text-xs text-slate-600 border-t border-slate-800 shrink-0 text-center">
+      <kbd class="bg-slate-800 px-1 rounded">Esc</kbd> close &nbsp;·&nbsp;
+      <kbd class="bg-slate-800 px-1 rounded">← →</kbd> navigate &nbsp;·&nbsp;
+      <kbd class="bg-slate-800 px-1 rounded">Z</kbd> zoom
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Alert type dropdown toggle ──
+document.querySelector('input[name="only_alerts"]').addEventListener('change', function() {
+  document.getElementById('alertTypeSelect').style.display = this.checked ? 'block' : 'none';
+});
+
+// ── Sort via form submit (preserves all filters including store checkboxes) ──
+function applySort(key, ord) {
+  document.getElementById("sortInput").value  = key;
+  document.getElementById("orderInput").value = ord;
+  document.getElementById("pageInput").value  = 1;
+  document.querySelector("form[method=get]").submit();
+}
+
+// ── Pagination via form submit ──
+function gotoPage(p) {
+  document.getElementById("pageInput").value = p;
+  document.querySelector("form[method=get]").submit();
+}
+
+function closeRefreshModal() {
+  document.getElementById('refreshModal').classList.add('hidden');
+  document.getElementById('refreshBtn').disabled = false;
+}
+
+// ── Refresh / Alerts ──
+async function doRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  const modal = document.getElementById('refreshModal');
+  const storesDiv = document.getElementById('refreshStores');
+  const bar = document.getElementById('refreshBar');
+  const status = document.getElementById('refreshStatus');
+
+  btn.disabled = true;
+  storesDiv.innerHTML = '';
+  bar.style.width = '0%';
+  bar.className = 'bg-indigo-500 h-2 rounded-full transition-all duration-300';
+  status.textContent = 'Starting...';
+  modal.classList.remove('hidden');
+
+  // Fallback: if SSE stalls for 5 minutes, reload
+  const fallbackTimer = setTimeout(() => { location.reload(); }, 300000);
+
+  // Track last message time — if 30s pass with no store/done event, show warning
+  let lastActivity = Date.now();
+  const stallWatcher = setInterval(() => {
+    if (Date.now() - lastActivity > 30000) {
+      status.textContent = status.textContent.replace(' (waiting…)', '') + ' (waiting…)';
+    }
+  }, 5000);
+
+  const es = new EventSource('/api/refresh/stream');
+
+  es.onmessage = (e) => {
+    // SSE comments (keepalive) have no data — skip
+    if (!e.data) return;
+    const msg = JSON.parse(e.data);
+    lastActivity = Date.now();
+
+    if (msg.type === 'start') {
+      status.textContent = `0 / ${msg.total} stores`;
+    }
+    else if (msg.type === 'store' || msg.type === 'error') {
+      const pct = Math.round((msg.done / msg.total) * 100);
+      bar.style.width = pct + '%';
+      status.textContent = `${msg.done} / ${msg.total} stores`;
+
+      const icon = msg.type === 'error' ? '❌' : '✅';
+      const detail = msg.type === 'error'
+        ? `<span class="text-rose-400 text-xs">${msg.error}</span>`
+        : `<span class="text-slate-400">${msg.count} items</span>`;
+      const row = document.createElement('div');
+      row.className = 'flex justify-between text-xs';
+      row.innerHTML = `<span>${icon} <span class="text-slate-200">${msg.name}</span></span>${detail}`;
+      storesDiv.appendChild(row);
+    }
+    else if (msg.type === 'done') {
+      clearTimeout(fallbackTimer);
+      clearInterval(stallWatcher);
+      es.close();
+      bar.style.width = '100%';
+      bar.className = 'bg-emerald-500 h-2 rounded-full transition-all duration-300';
+      status.textContent = 'Done! Reloading...';
+      setTimeout(() => location.reload(), 1000);
+    }
+  };
+
+  es.onerror = () => {
+    // SSE connections can drop transiently — don't close the modal, let it reconnect
+    status.textContent = (status.textContent || '') + ' (reconnecting…)';
+  };
+}
+async function toggleExportMenu() {
+  const m = document.getElementById('exportMenu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('exportWrap').contains(e.target))
+    document.getElementById('exportMenu').style.display = 'none';
+});
+
+function doExportPDF() {
+  document.getElementById('exportMenu').style.display = 'none';
+  window.print();
+}
+
+function doExport(fmt) {
+  document.getElementById('exportMenu').style.display = 'none';
+  // Build URL with current filters from the page URL
+  const params = new URLSearchParams(window.location.search);
+  params.set('fmt', fmt);
+  const url = '/api/export?' + params.toString();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function markAlertsRead() {
+  await fetch("/api/alerts/mark_read", {method:"POST"});
+  location.reload();
+}
+
+// ── Album state ──
+let albumImages = [];
+let albumIndex  = 0;
+
+function openImageFromBtn(btn) {
+  const title  = btn.getAttribute("data-title") || "";
+  let images = [];
+  try { images = JSON.parse(btn.getAttribute("data-images") || "[]"); } catch(e) {}
+  if (!images.length) images = [btn.getAttribute("data-img")];
+  openAlbum(images, 0, title);
+}
+
+function openAlbum(images, idx, title) {
+  albumImages = images.filter(Boolean);
+  albumIndex  = idx;
+
+  document.getElementById("imgTitle").textContent = title || "";
+  document.getElementById("imgModal").classList.remove("hidden");
+  document.getElementById("imgModal").classList.add("flex");
+  document.body.style.overflow = "hidden";
+
+  renderAlbum();
+}
+
+function renderAlbum() {
+  const img    = document.getElementById("imgBig");
+  const strip  = document.getElementById("thumbStrip");
+  const counter= document.getElementById("imgCounter");
+  const prevBtn= document.getElementById("prevBtn");
+  const nextBtn= document.getElementById("nextBtn");
+
+  const total = albumImages.length;
+  const src   = albumImages[albumIndex] || "";
+
+  // Reset zoom
+  img.style.transform = "";
+  img.style.cursor    = "zoom-in";
+  img.classList.remove("zoomed");
+  document.getElementById("zoomBtn").textContent = "🔍 Zoom";
+
+  img.src = src;
+  img.alt = `Image ${albumIndex + 1}`;
+
+  counter.textContent = total > 1 ? `${albumIndex + 1} / ${total}` : "";
+
+  // Arrows
+  if (total > 1) {
+    prevBtn.classList.remove("hidden"); prevBtn.classList.add("flex");
+    nextBtn.classList.remove("hidden"); nextBtn.classList.add("flex");
+    prevBtn.style.opacity = albumIndex === 0 ? "0.3" : "1";
+    nextBtn.style.opacity = albumIndex === total - 1 ? "0.3" : "1";
+  } else {
+    prevBtn.classList.add("hidden");
+    nextBtn.classList.add("hidden");
+  }
+
+  // Thumbnail strip
+  strip.innerHTML = "";
+  if (total > 1) {
+    albumImages.forEach((url, i) => {
+      const thumb = document.createElement("img");
+      thumb.src   = url;
+      thumb.alt   = `Thumb ${i+1}`;
+      thumb.style.cssText = [
+        "width:60px", "height:60px", "object-fit:cover",
+        "border-radius:8px", "cursor:pointer", "flex-shrink:0",
+        "border:2px solid " + (i === albumIndex ? "#6366f1" : "#334155"),
+        "opacity:" + (i === albumIndex ? "1" : "0.55"),
+        "transition:all 0.15s"
+      ].join(";");
+      thumb.onclick = () => { albumIndex = i; renderAlbum(); };
+      strip.appendChild(thumb);
+    });
+    strip.style.display = "flex";
+  } else {
+    strip.style.display = "none";
+  }
+}
+
+function albumNav(dir) {
+  const next = albumIndex + dir;
+  if (next < 0 || next >= albumImages.length) return;
+  albumIndex = next;
+  renderAlbum();
+}
+
+function closeImage() {
+  document.getElementById("imgBig").src = "";
+  document.getElementById("imgModal").classList.add("hidden");
+  document.getElementById("imgModal").classList.remove("flex");
+  document.body.style.overflow = "";
+  albumImages = [];
+}
+
+function toggleZoom() {
+  const img = document.getElementById("imgBig");
+  const btn = document.getElementById("zoomBtn");
+  const zoomed = img.classList.toggle("zoomed");
+  img.style.transform = zoomed ? "scale(2)" : "";
+  img.style.cursor    = zoomed ? "zoom-out" : "zoom-in";
+  btn.textContent = zoomed ? "🔍 Unzoom" : "🔍 Zoom";
+}
+
+document.addEventListener("keydown", (e) => {
+  const open = !document.getElementById("imgModal").classList.contains("hidden");
+  if (!open) return;
+  if (e.key === "Escape")     closeImage();
+  if (e.key === "ArrowLeft")  albumNav(-1);
+  if (e.key === "ArrowRight") albumNav(1);
+  if (e.key === "z" || e.key === "Z") toggleZoom();
+});
+</script>
+
+</body>
+</html>
