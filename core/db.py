@@ -37,6 +37,8 @@ def db_init(db_path: str) -> None:
         images_json  TEXT,
         compare_at   REAL,
         stock_qty    INTEGER,
+        source_type  TEXT NOT NULL DEFAULT 'local',
+        country_code TEXT NOT NULL DEFAULT 'LB',
         UNIQUE(item_number, store, captured_at)
     )
     """)
@@ -231,7 +233,8 @@ def compute_alerts(db_path: str, captured_at: str, store: str, catalog: Dict[str
 
 # ── Snapshots ──────────────────────────────────────────────────────────────────
 
-def persist_snapshot(db_path: str, captured_at: str, store: str, catalog: Dict[str, Dict[str, Any]]) -> None:
+def persist_snapshot(db_path: str, captured_at: str, store: str, catalog: Dict[str, Dict[str, Any]],
+                     source_type: str = "local", country_code: str = "LB") -> None:
     conn = db_connect(db_path)
     cur = conn.cursor()
 
@@ -242,8 +245,9 @@ def persist_snapshot(db_path: str, captured_at: str, store: str, catalog: Dict[s
         cur.execute("""
         INSERT OR IGNORE INTO snapshots(
             captured_at, store, item_number, title, theme, category, brand,
-            price, availability, link, image_url, images_json, compare_at, stock_qty
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            price, availability, link, image_url, images_json, compare_at, stock_qty,
+            source_type, country_code
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             captured_at,
             store,
@@ -259,6 +263,8 @@ def persist_snapshot(db_path: str, captured_at: str, store: str, catalog: Dict[s
             json.dumps(rec.get("image_list") or []),
             rec.get("compare_at"),
             offer.stock_qty,
+            source_type,
+            country_code,
         ))
 
     conn.commit()

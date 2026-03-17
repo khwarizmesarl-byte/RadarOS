@@ -39,6 +39,8 @@ from modules.brickradar.config import (
     MODULE,
     SHOPIFY_STORES,
     BIGCOMMERCE_STORES,
+    OFFICIAL_STORES,
+    INTERNATIONAL_STORES,
     NEW_ARRIVAL_COLLECTIONS,
     HARDCODED_STORE_URLS,
     LEGO_THEMES,
@@ -48,6 +50,11 @@ from modules.brickradar.scrapers import (
     fetch_playone,
     fetch_html_stores,
     normalize_theme_category_from_shopify,
+)
+from modules.brickradar.scrapers_official import (
+    fetch_cada,
+    fetch_mouldking,
+    fetch_lego_com,
 )
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
@@ -365,10 +372,12 @@ def api_refresh_stream(stores: str = ""):
         tasks.append(("playone",   None, None))
         for bc_name, bc_cfg in BIGCOMMERCE_STORES.items():
             tasks.append(("bigcommerce", bc_name, bc_cfg))
+        for off_name, off_cfg in OFFICIAL_STORES.items():
+            tasks.append(("official", off_name, off_cfg))
 
         if selected:
             def _label(t): return t[1] or ("BRICKSHOP" if t[0] == "brickshop" else ("PlayOne" if t[0] == "playone" else t[0]))
-            tasks = [t for t in tasks if _label(t) in selected]
+            tasks = [t for t in tasks if _label(t) in selected or t[0] == "official"]
 
         total = len(tasks)
         q     = _queue.Queue()
@@ -398,6 +407,12 @@ def api_refresh_stream(stores: str = ""):
                         label, cfg["url"], cfg.get("collection_slug", ""),
                         cfg.get("lego_only", True), float(cfg.get("vat_multiplier", 1.0))
                     )))
+                elif kind == "official":
+                    _fn = {"CaDA Official": fetch_cada, "Mould King": fetch_mouldking, "LEGO Official": fetch_lego_com}.get(label)
+                    if _fn:
+                        q.put(("ok", label, _fn()))
+                    else:
+                        q.put(("err", label, "No scraper for official store"))
                 else:
                     q.put(("ok", "PlayOne", fetch_playone()))
             except Exception as e:
@@ -429,7 +444,18 @@ def api_refresh_stream(stores: str = ""):
                 done_bg += 1
                 if status == "ok":
                     count = len(data) if isinstance(data, dict) else 0
-                    persist_snapshot(DB_PATH, captured_at, name, data)
+                    # Determine source_type and country_code for this store
+                    st_cfg = (
+                        SHOPIFY_STORES.get(name) or
+                        BIGCOMMERCE_STORES.get(name) or
+                        OFFICIAL_STORES.get(name) or
+                        INTERNATIONAL_STORES.get(name) or {}
+                    )
+                    src_type     = st_cfg.get("source_type", "local")
+                    country_code = st_cfg.get("country_code", "LB")
+                    if name in ("BRICKSHOP", "PlayOne"):
+                        src_type, country_code = "local", "LB"
+                    persist_snapshot(DB_PATH, captured_at, name, data, src_type, country_code)
                     compute_alerts(DB_PATH, captured_at, name, data)
                     _sse_q.put(("ok", name, count, done_bg))
                 else:
@@ -446,7 +472,7 @@ def api_refresh_stream(stores: str = ""):
         pool = ThreadPoolExecutor(max_workers=len(main_tasks) + 1)
         shopify_idx = 0
         for t in main_tasks:
-            if t[0] in ("brickshop", "playone"):
+            if t[0] in ("brickshop", "playone", "official"):
                 pool.submit(_run_task, t, 0)
             else:
                 pool.submit(_run_task, t, shopify_idx); shopify_idx += 1

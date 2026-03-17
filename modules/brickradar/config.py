@@ -36,6 +36,8 @@ SHOPIFY_STORES = {
         "lego_only":      False,
         "collection_slug": "",
         "new_arrivals_collection": NEW_ARRIVAL_COLLECTIONS.get("Brickmania", ""),
+        "source_type":    "local",
+        "country_code":   "LB",
     },
     "Bricking": {
         "url":            "https://bricking.com",
@@ -43,6 +45,8 @@ SHOPIFY_STORES = {
         "lego_only":      False,
         "collection_slug": "",
         "new_arrivals_collection": NEW_ARRIVAL_COLLECTIONS.get("Bricking", ""),
+        "source_type":    "local",
+        "country_code":   "LB",
     },
     "KLAPTAP": {
         "url":            "https://klaptap.com",
@@ -50,6 +54,8 @@ SHOPIFY_STORES = {
         "lego_only":      True,
         "collection_slug": "",
         "new_arrivals_collection": "",
+        "source_type":    "local",
+        "country_code":   "LB",
     },
 }
 
@@ -61,6 +67,8 @@ BIGCOMMERCE_STORES = {
         "collection_slug": "lego",
         "lego_only":      True,
         "vat_multiplier": 1.0,
+        "source_type":    "local",
+        "country_code":   "LB",
     },
 }
 
@@ -73,6 +81,50 @@ PLAYONE_LISTING_URLS = [
 
 # BRICKSHOP: WooCommerce store
 BRICKSHOP_LISTING_URL = "https://brickshop.me/shop/"
+
+# ── Official brand stores ──────────────────────────────────────────────────────
+
+OFFICIAL_STORES = {
+    "LEGO Official": {
+        "url":          "https://www.lego.com",
+        "source_type":  "official",
+        "country_code": "US",
+        "currency":     "USD",
+        "platform":     "lego_com",
+    },
+    "CaDA Official": {
+        "url":          "https://decadastore.com",
+        "source_type":  "official",
+        "country_code": "CN",
+        "currency":     "USD",
+        "platform":     "shopify",
+        "lego_only":    False,
+        "vat_multiplier": 1.0,
+        "collection_slug": "",
+        "new_arrivals_collection": "",
+    },
+    "Mould King": {
+        "url":          "https://mouldking.store",
+        "source_type":  "official",
+        "country_code": "CN",
+        "currency":     "USD",
+        "platform":     "woocommerce",
+        "lego_only":    False,
+        "vat_multiplier": 1.0,
+    },
+}
+
+# ── International retail stores ────────────────────────────────────────────────
+
+INTERNATIONAL_STORES = {
+    "Bricklink": {
+        "url":          "https://www.bricklink.com",
+        "source_type":  "international",
+        "country_code": "US",
+        "currency":     "USD",
+        "platform":     "bricklink",
+    },
+}
 
 # ── Preferred display order (fallback: alphabetical) ──────────────────────────
 
