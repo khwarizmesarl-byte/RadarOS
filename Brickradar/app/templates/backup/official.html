@@ -1,0 +1,318 @@
+<!doctype html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <title>BrickRadar — Official Brands</title>
+  <style>
+    .logo-click{cursor:pointer;transition:opacity 0.15s;}
+    .logo-click:hover{opacity:0.75;}
+    .store-logo-pill{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.25rem 0.6rem;transition:all 0.15s;text-decoration:none;}
+    .store-logo-pill:hover{background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.3);transform:translateY(-1px);}
+    .store-logo-pill img{height:18px;width:auto;max-width:60px;object-fit:contain;border-radius:2px;}
+    .store-logo-pill span{font-size:0.68rem;font-weight:600;color:#94a3b8;white-space:nowrap;}
+    .about-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+    .about-overlay.open{display:flex;}
+
+    /* Product card */
+    .prod-card {
+      background: #0d1420;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: all 0.18s;
+      display: flex;
+      flex-direction: column;
+    }
+    .prod-card:hover {
+      border-color: rgba(99,102,241,0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .prod-card img {
+      width: 100%; aspect-ratio: 1/1;
+      object-fit: cover;
+      background: #131e2e;
+    }
+    .prod-card .card-body {
+      padding: 0.75rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .prod-card .card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .prod-card .card-sku {
+      font-size: 0.68rem;
+      font-family: monospace;
+      color: #475569;
+    }
+    .prod-card .card-price {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-top: auto;
+      padding-top: 0.4rem;
+    }
+    .prod-card .card-avail {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+    }
+    .avail-in  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+    .avail-out { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+    .avail-na  { background: rgba(100,116,139,0.1); color: #64748b; border: 1px solid rgba(100,116,139,0.2); }
+
+    .brand-pill {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.2rem 0.65rem; border-radius: 999px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .brand-lego    { background: rgba(251,191,36,0.15); color: #fcd34d; border: 1px solid rgba(251,191,36,0.25); }
+    .brand-cada    { background: rgba(99,102,241,0.15);  color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+    .brand-mould   { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); }
+    .brand-default { background: rgba(100,116,139,0.1); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+
+    .tab-active   { background: var(--acc, #6366f1); color: #fff; border-color: var(--acc, #6366f1); }
+    .tab-inactive { background: rgba(255,255,255,0.03); color: #94a3b8; border-color: #1e293b; }
+    .tab-official-active { background: #d97706; color: #fff; border-color: #b45309; }
+    .tab-intl-active { background: #059669; color: #fff; border-color: #047857; }
+    .theme-btn.active { border-color: var(--acc, #6366f1) !important; box-shadow: 0 0 0 2px var(--acc, #6366f1); }
+</style>
+  <script src="/static/theme.js"></script>
+</head>
+<body class="bg-slate-900 text-white" style="padding:1.25rem">
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.6rem 0;margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a href="/" style="text-decoration:none;display:flex;align-items:center;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:36px;width:auto;display:block;">
+  </a>
+    <span style="color:#1e293b;font-size:0.8rem;margin-left:0.5rem;">|</span>
+    <span style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-left:0.3rem;">🏭 Official Brands</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+    <a href="/" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Dashboard</a>
+    <a href="/stores" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+    <a href="/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+    <a href="/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+    <a href="/analytics" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a><a href="/analytics/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">📊 Brand</a><a href="/analytics/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">Intl</a>
+    <a href="/advanced" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+    <a href="/radarlist" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">RadarList</a>
+    <div id="themeSwitcher" style="display:flex;align-items:center;gap:3px;"></div>
+    <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">About</a>
+  </div>
+</div>
+<!-- ── Filters ── -->
+<form method="get" class="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-4">
+  <div class="flex flex-wrap gap-3 items-end">
+
+    <div>
+      <label class="text-xs text-slate-300">Search</label>
+      <input name="q" value="{{ search_q }}" placeholder="Title or SKU"
+        class="mt-1 w-40 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500" />
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Brand</label>
+      <select name="brand" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Brands</option>
+        {% for b in all_brands %}
+          <option value="{{ b }}" {% if b == selected_brand %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Theme / Category</label>
+      <select name="theme" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Themes</option>
+        {% for t in all_themes %}
+          <option value="{{ t }}" {% if t == selected_theme %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Availability</label>
+      <select name="avail" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="all"      {% if avail_filter == 'all'      %}selected{% endif %}>All</option>
+        <option value="instock"  {% if avail_filter == 'instock'  %}selected{% endif %}>In Stock Only</option>
+        <option value="outstock" {% if avail_filter == 'outstock' %}selected{% endif %}>Out of Stock</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Sort</label>
+      <select name="sort" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="title" {% if sort == 'title' %}selected{% endif %}>Title A–Z</option>
+        <option value="price_asc"  {% if sort == 'price_asc'  %}selected{% endif %}>Price ↑</option>
+        <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
+        <option value="brand" {% if sort == 'brand' %}selected{% endif %}>Brand</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Per page</label>
+      <select name="per_page" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm">
+        {% for n in [48, 96, 192, 480] %}
+          <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 font-semibold text-sm self-end">
+      Apply
+    </button>
+
+    <div class="text-xs text-slate-400 self-end ml-auto">
+      {{ total }} products &nbsp;·&nbsp; Page {{ page }} of {{ total_pages }}
+    </div>
+  </div>
+</form>
+
+<!-- ── Pagination ── -->
+{% if total_pages > 1 %}
+<div class="flex items-center gap-2 mb-4 flex-wrap">
+  {% set base_url = "/official?q=" ~ search_q ~ "&brand=" ~ selected_brand ~ "&theme=" ~ selected_theme ~ "&avail=" ~ avail_filter ~ "&sort=" ~ sort ~ "&per_page=" ~ per_page %}
+  {% if page > 1 %}
+    <a href="{{ base_url }}&page=1" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">« First</a>
+    <a href="{{ base_url }}&page={{ page - 1 }}" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">‹ Prev</a>
+  {% endif %}
+  <span style="padding:0.375rem 0.75rem;border-radius:0.5rem;background:#d97706;color:#fff;font-size:0.875rem;font-weight:700;">{{ page }}</span>
+  {% if page < total_pages %}
+    <a href="{{ base_url }}&page={{ page + 1 }}" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Next ›</a>
+    <a href="{{ base_url }}&page={{ total_pages }}" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Last »</a>
+  {% endif %}
+  <span class="text-xs text-slate-400 ml-2">{{ total }} items total</span>
+</div>
+{% endif %}
+
+<!-- ── Brand sections ── -->
+{% set current_brand = namespace(val='') %}
+{% for row in rows %}
+  {% set store_name = row.stores.keys() | list | first if row.stores else '' %}
+  {% set offer = row.stores[store_name] if store_name else None %}
+
+  {% if row.brand != current_brand.val %}
+    {% if current_brand.val != '' %}</div>{% endif %}
+    {% set current_brand.val = row.brand %}
+    <div class="mb-2 mt-4 flex items-center gap-3">
+      {% if 'LEGO' in row.brand %}
+        <span class="brand-pill brand-lego">🧱 {{ row.brand }}</span>
+      {% elif 'CADA' in row.brand %}
+        <span class="brand-pill brand-cada">⚡ {{ row.brand }}</span>
+      {% elif 'MOULD' in row.brand %}
+        <span class="brand-pill brand-mould">👑 {{ row.brand }}</span>
+      {% else %}
+        <span class="brand-pill brand-default">{{ row.brand }}</span>
+      {% endif %}
+    </div>
+    <div class="grid gap-3 mb-2" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+  {% endif %}
+
+  <a href="{{ offer.link if offer else '#' }}" target="_blank" rel="noopener" class="prod-card" style="text-decoration:none;">
+    {% if row.image_url %}
+      <img src="{{ row.image_url }}" alt="{{ row.title }}" loading="lazy"
+           onerror="this.src='';this.style.background='#131e2e';this.style.height='160px'" />
+    {% else %}
+      <div style="aspect-ratio:1/1;background:#131e2e;display:flex;align-items:center;justify-content:center;color:#1e293b;font-size:2rem;">🧱</div>
+    {% endif %}
+    <div class="card-body">
+      <div class="card-title">{{ row.title }}</div>
+      <div class="card-sku">{{ row.item_number }}</div>
+      {% if row.theme %}
+        <div style="font-size:0.65rem;color:#475569;">{{ row.theme }}</div>
+      {% endif %}
+      <div class="flex items-center justify-between mt-auto pt-2">
+        {% if offer and offer.price %}
+          <div class="card-price">${{ "%.2f"|format(offer.price) }}</div>
+        {% else %}
+          <div class="card-price" style="color:#475569;">—</div>
+        {% endif %}
+        {% if offer %}
+          {% set av = (offer.availability or '') | lower %}
+          {% if 'in' in av or 'avail' in av %}
+            <span class="card-avail avail-in">In Stock</span>
+          {% elif 'out' in av %}
+            <span class="card-avail avail-out">Out</span>
+          {% else %}
+            <span class="card-avail avail-na">N/A</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      {% if offer and offer.discount_pct and offer.discount_pct > 0 %}
+        <span style="font-size:0.65rem;color:#fbbf24;font-weight:700;">🏷️ -{{ offer.discount_pct|int }}% OFF</span>
+      {% endif %}
+    </div>
+  </a>
+{% endfor %}
+{% if rows %}</div>{% endif %}
+
+{% if not rows %}
+<div class="text-center text-slate-500 py-24">
+  <div style="font-size:3rem;margin-bottom:1rem;">🏭</div>
+  <div class="text-lg font-semibold text-slate-400">No official brand products found</div>
+  <div class="text-sm mt-2">Run a refresh to fetch CaDA and Mould King catalogs</div>
+</div>
+{% endif %}
+
+<!-- ── About modal (reuse from dashboard) ── -->
+<div id="aboutModal" class="about-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div style="background:#0d1420;border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:2.5rem 3rem;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.8);max-width:400px;width:90%;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:48px;width:auto;display:block;margin:0 auto 1.5rem;">
+    <div style="height:1px;background:rgba(99,102,241,0.12);margin-bottom:1.5rem"></div>
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.9rem">Developed by</div>
+    <a href="https://www.khwarizme.com/" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:1.25rem;text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <div style="background:#fff;border-radius:12px;padding:0.75rem 1.5rem;">
+        <img src="/static/khwarizme_logo.png" alt="Khwarizme" style="height:52px;width:auto;display:block;">
+      </div>
+    </a>
+    <div style="font-size:0.72rem;color:#64748b;font-family:monospace;margin-bottom:1.75rem">© 2026 · All rights reserved</div>
+    <button onclick="document.getElementById('aboutModal').classList.remove('open')"
+      style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:0.45rem 1.75rem;font-size:0.78rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+// ── Store Logos ──
+async function loadStoreLogos() {
+  try {
+    const logos = await fetch('/api/stores/logos').then(r => r.json());
+    const bar = document.getElementById('storeLogoBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    let urlMap = {};
+    try {
+      const stores = await fetch('/api/stores').then(r => r.json());
+      stores.forEach(s => { urlMap[s.name] = s.base_url; });
+    } catch(e) {}
+    Object.entries(logos).forEach(([name, logoUrl]) => {
+      const pill = document.createElement('a');
+      pill.className = 'store-logo-pill';
+      pill.title = name;
+      pill.href = urlMap[name] || '#';
+      pill.target = '_blank';
+      pill.rel = 'noopener';
+      pill.innerHTML = `<img src="${logoUrl}" alt="${name}" onerror="this.style.display='none'"><span>${name}</span>`;
+      bar.appendChild(pill);
+    });
+  } catch(e) {}
+}
+loadStoreLogos();
+</script>
+</body>
+</html>

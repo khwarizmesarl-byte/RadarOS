@@ -51,82 +51,84 @@
 <body class="bg-slate-900 text-white" style="padding:1.25rem">
 
 <!-- ── Top bar ── -->
-<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
-  <div>
-    <!-- BrickRadar Logo -->
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 56" width="280" height="56" style="display:block;margin-bottom:0.5rem" class="logo-click" onclick="document.getElementById('aboutModal').classList.add('open')" title="About BrickRadar">
-      <defs>
-        <linearGradient id="lr1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#fbbf24"/><stop offset="100%" style="stop-color:#f97316"/></linearGradient>
-        <linearGradient id="lr2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#6366f1"/><stop offset="100%" style="stop-color:#8b5cf6"/></linearGradient>
-        <radialGradient id="lr3" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:0.5"/><stop offset="100%" style="stop-color:#10b981;stop-opacity:0"/></radialGradient>
-        <clipPath id="lrc"><circle cx="28" cy="28" r="20"/></clipPath>
-        <filter id="lrg"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <circle cx="28" cy="28" r="22" fill="#0d1420" stroke="rgba(99,102,241,0.2)" stroke-width="1"/>
-      <circle cx="28" cy="28" r="20" fill="none" stroke="rgba(99,102,241,0.18)" stroke-width="1"/>
-      <circle cx="28" cy="28" r="13" fill="none" stroke="rgba(99,102,241,0.12)" stroke-width="0.8"/>
-      <path d="M28,28 L44,17 A20,20 0 0,1 48,28 Z" fill="url(#lr3)" clip-path="url(#lrc)"/>
-      <line x1="28" y1="28" x2="45" y2="17" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" filter="url(#lrg)"/>
-      <rect x="16" y="22" width="24" height="14" rx="3" fill="url(#lr1)"/>
-      <rect x="19" y="16" width="7" height="7" rx="2" fill="#fcd34d"/>
-      <rect x="30" y="16" width="7" height="7" rx="2" fill="#fcd34d"/>
-      <rect x="16" y="22" width="24" height="3" rx="2" fill="rgba(255,255,255,0.2)"/>
-      <circle cx="44" cy="18" r="2" fill="#10b981" filter="url(#lrg)"/>
-      <text x="60" y="30" font-family="'Fredoka One',cursive,'Arial Black',sans-serif" font-size="20" fill="url(#lr1)" letter-spacing="0.5">BRICK</text>
-      <text x="138" y="30" font-family="'Fredoka One',cursive,'Arial Black',sans-serif" font-size="20" fill="url(#lr2)" letter-spacing="0.5">RADAR</text>
-      <text x="61" y="43" font-family="sans-serif" font-size="7.5" font-weight="700" fill="#334155" letter-spacing="3">TRACK · COMPARE · SAVE</text>
-    </svg>
-    <div class="text-xs text-slate-400">
-      Last updated: {{ last_updated or "never" }}
-      <span class="ml-3 inline-flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30">
-          Alerts: {{ alerts_unread }}
+<div style="margin-bottom:0.75rem;">
+  <!-- Row 1: logo + actions -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+
+    <!-- Left: logo + meta -->
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <a href="/" style="text-decoration:none;display:flex;align-items:center;"><img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:40px;width:auto;display:block;"></a>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span style="font-size:0.68rem;color:#475569;border-left:1px solid #1e293b;padding-left:0.6rem;">{{ last_updated or "never" }}</span>
+        <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30" style="font-size:0.68rem;">
+          {{ alerts_unread }} alert{{ 's' if alerts_unread != 1 else '' }}
         </span>
-      </span>
-    </div>
-    <!-- Store logos bar -->
-    <div id="storeLogoBar" style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.6rem;"></div>
-  </div>
-  <div class="flex flex-wrap gap-2 items-center">
-    <a href="/stores"
-      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
-      🏪 Stores
-    </a>
-    <button id="refreshBtn" onclick="doRefresh()"
-      style="padding:0.5rem 1rem;border-radius:0.5rem;background:var(--acc);color:#fff;font-weight:600;border:none;cursor:pointer;font-family:inherit;font-size:0.875rem;" id="refreshBtnStyle" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-      Refresh
-    </button>
-    <a href="/analytics"
-      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
-      &#128202; Analytics
-    </a>
-    <a href="/advanced"
-      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
-      &#9878; Advanced
-    </a>
-    <a href="/radarlist" id="radarlistNavBtn"
-      class="px-4 py-2 rounded-lg border font-semibold"
-      style="background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.3);color:#a5b4fc;">
-      ⊙ RadarList <span id="radarlistCount" style="background:var(--acc);color:#fff;border-radius:999px;padding:0 6px;font-size:0.7rem;margin-left:3px;display:none">0</span>
-    </a>
-    <div id="themeSwitcher" style="display:flex;align-items:center;gap:4px;"></div>
-    <button onclick="markAlertsRead()"
-      class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
-      Mark alerts read
-    </button>
-    <div style="position:relative;display:inline-block" id="exportWrap">
-      <button onclick="toggleExportMenu()"
-        class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold">
-        &#8595; Export
-      </button>
-      <div id="exportMenu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#1e293b;border:1px solid #334155;border-radius:10px;min-width:170px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.6);overflow:hidden;">
-        <button onclick="doExport('xlsx')" class="export-item">&#128202; Excel (.xlsx)</button>
-        <button onclick="doExport('csv')"  class="export-item">&#128196; CSV</button>
-        <button onclick="doExport('json')" class="export-item">&#123;&#125; JSON</button>
-        <hr style="border:none;border-top:1px solid #334155;margin:0">
-        <button onclick="doExportPDF()"    class="export-item" style="color:#fcd34d">&#128196; PDF (Print)</button>
       </div>
     </div>
+
+    <!-- Right: nav + actions -->
+    <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+
+      <!-- Nav pill group -->
+      <div style="display:flex;align-items:center;gap:1px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+        <a href="/stores" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+        <a href="/official" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+        <a href="/international" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+        <a href="/analytics" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a>
+        <a href="/analytics/official" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Brand Analytics</a>
+        <a href="/analytics/international" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">Intl Analytics</a>
+        <a href="/advanced" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+        <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:4px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">About</a>
+      </div>
+
+      <div style="width:1px;height:18px;background:#1e293b;"></div>
+
+      <!-- Theme switcher -->
+      <div id="themeSwitcher" style="display:flex;align-items:center;gap:3px;"></div>
+
+      <!-- User account & logout -->
+      <div id="userNavArea" style="display:none;align-items:center;gap:0.4rem;">
+        <span id="userNavName" style="font-size:0.7rem;color:#a5b4fc;font-weight:600;"></span>
+        <span id="userNavPlan" style="font-size:0.62rem;padding:1px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;"></span>
+        <a href="/account" style="font-size:0.7rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background=''">Account</a>
+        <a href="/api/user/logout" style="font-size:0.7rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background=''">Logout</a>
+      </div>
+
+      <!-- RadarList -->
+      <a href="/radarlist" id="radarlistNavBtn"
+        style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc;font-size:0.72rem;font-weight:600;text-decoration:none;white-space:nowrap;">
+        ⊙ RadarList <span id="radarlistCount" style="background:#6366f1;color:#fff;border-radius:999px;padding:0 5px;font-size:0.65rem;display:none;">0</span>
+      </a>
+
+      <!-- Refresh -->
+      <button id="refreshBtn" onclick="doRefresh()"
+        style="display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:7px;background:#6366f1;border:none;color:#fff;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:inherit;"
+        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        ↺ Refresh
+      </button>
+
+      <!-- More: export + mark read -->
+      <div style="position:relative;display:inline-block;" id="moreWrap">
+        <button onclick="toggleMoreMenu()"
+          style="padding:5px 9px;border-radius:7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#64748b;font-size:0.8rem;cursor:pointer;font-family:inherit;"
+          title="More options">⋯</button>
+        <div id="moreMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#1e293b;border:1px solid #334155;border-radius:10px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.6);overflow:hidden;">
+          <button onclick="markAlertsRead();toggleMoreMenu()" class="export-item">✓ Mark alerts read</button>
+          <hr style="border:none;border-top:1px solid #334155;margin:0">
+          <button onclick="doExport('xlsx');toggleMoreMenu()" class="export-item">↓ Excel (.xlsx)</button>
+          <button onclick="doExport('csv');toggleMoreMenu()"  class="export-item">↓ CSV</button>
+          <button onclick="doExport('json');toggleMoreMenu()" class="export-item">{} JSON</button>
+          <hr style="border:none;border-top:1px solid #334155;margin:0">
+          <button onclick="doExportPDF();toggleMoreMenu()" class="export-item" style="color:#fcd34d;">↓ PDF (Print)</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Row 2: store logos bar -->
+  <div id="storeLogoBar" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;padding:0.4rem 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);margin-bottom:0.5rem;"></div>
+</div>
 
 <!-- Store picker modal -->
 <div id="refreshPickerModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
@@ -161,8 +163,6 @@
     <div id="refreshStatus" class="text-xs text-slate-400 mt-2 text-center">Starting...</div>
   </div>
 </div>
-  </div>
-</div>
 
 <!-- ── Filters ── -->
 <form method="get" class="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-3">
@@ -181,15 +181,6 @@
       <select name="brand" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
         {% for b in all_brands %}
           <option value="{{ b }}" {% if b == selected_brand %}selected{% endif %}>{{ b }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div>
-      <label class="text-xs text-slate-300">Category</label>
-      <select name="category" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
-        {% for c in all_categories %}
-          <option value="{{ c }}" {% if c == selected_category %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
     </div>
@@ -326,7 +317,6 @@
   <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Item #", "item") }}</th>
   <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Title", "title") }}</th>
   <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Theme", "theme") }}</th>
-  <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th("Category", "category") }}</th>
   {% for s in stores %}
   <th class="bg-slate-950 px-3 py-2 text-left border-b border-slate-800">{{ sort_th(s, "store:" ~ s) }}</th>
   {% endfor %}
@@ -402,7 +392,6 @@
     {% endif %}
   </td>
   <td class="p-3 text-slate-300 whitespace-nowrap">{{ row.theme }}</td>
-  <td class="p-3 text-slate-300 whitespace-nowrap">{{ row.category }}</td>
 
   {% for s in stores %}
     {% set info = row.stores.get(s) %}
@@ -546,11 +535,29 @@ function closeRefreshModal() {
 
 // ── Refresh / Alerts ──
 async function doRefresh() {
+  // Check refresh limit for plan
+  if (window._userCtx && window._userCtx.logged_in) {
+    const plan = window._userCtx.plan_name;
+    const refreshLimit = {Free:1, Starter:5, Pro:20, Premium:-1}[plan] || 1;
+    if (refreshLimit !== -1) {
+      const lastRefresh = localStorage.getItem('lastRefreshDate');
+      const today = new Date().toDateString();
+      const todayCount = parseInt(localStorage.getItem('refreshCount_'+today)||'0');
+      if (todayCount >= refreshLimit) {
+        alert(`You have reached your ${plan} plan refresh limit of ${refreshLimit} refresh${refreshLimit>1?'es':''} per day.\nUpgrade your plan for more refreshes.`);
+        return;
+      }
+      localStorage.setItem('refreshCount_'+today, todayCount+1);
+    }
+  }
   // Load stores and open picker
   const res = await fetch('/api/stores');
   const stores = await res.json();
   const list = document.getElementById('storePickerList');
-  list.innerHTML = stores.filter(s => s.enabled).map(s => `
+  // Filter to user selected stores only
+  const userNames = window._userStoreNames || null;
+  const filtered = stores.filter(s => s.enabled && (!userNames || userNames.has(s.name)));
+  list.innerHTML = filtered.map(s => `
     <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;background:#1e293b;border:1px solid #334155;">
       <input type="checkbox" class="store-pick-cb" value="${s.name}" checked style="accent-color:var(--acc);width:14px;height:14px;">
       <span style="font-size:0.82rem;color:#e2e8f0;">${s.name}</span>
@@ -746,6 +753,16 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ── Export ────────────────────────────────────────────────────────────────
+function toggleMoreMenu() {
+  const m = document.getElementById('moreMenu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  document.addEventListener('click', function hide(e) {
+    if (!document.getElementById('moreWrap').contains(e.target)) {
+      m.style.display = 'none';
+      document.removeEventListener('click', hide);
+    }
+  });
+}
 function toggleExportMenu() {
   const m = document.getElementById('exportMenu');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
@@ -792,6 +809,7 @@ async function loadStoreLogos() {
     const fallback = { 'BRICKSHOP': 'https://brickshop.me', 'PlayOne': 'https://playone.com.lb' };
 
     Object.entries(logos).forEach(([name, logoUrl]) => {
+      if (window._userStoreNames && window._userStoreNames.size > 0 && !window._userStoreNames.has(name)) return;
       const storeUrl = urlMap[name] || fallback[name] || '#';
       const pill = document.createElement('a');
       pill.className = 'store-logo-pill';
@@ -812,7 +830,16 @@ async function fetchAllLogos() {
   await fetch('/api/stores/fetch_logos', {method:'POST'});
   setTimeout(loadStoreLogos, 4000);
 }
-loadStoreLogos();
+// Load logos after user stores are fetched
+window._storeLogosReady = false;
+function maybeLoadLogos() {
+  if (!window._storeLogosReady) {
+    window._storeLogosReady = true;
+    loadStoreLogos();
+  }
+}
+// Fallback - load after 2s even if gate script hasn't run
+setTimeout(maybeLoadLogos, 2000);
 
 // ── RadarList ──────────────────────────────────────────────────────────────────
 let RADAR_IDS = new Set();
@@ -923,5 +950,59 @@ loadRadarIds();
   </div>
 </div>
   <script src="/static/ai_assistant.js"></script>
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    if (ctx.logged_in) {
+      window._userCtx = ctx;
+      const a = document.getElementById('userNavArea');
+      if (a) {
+        a.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+    }
+    const f = ctx.features || {};
+    // Gate settings and DB tools for free plan
+    const featureGates = [
+      {href:'/official',key:'official'},{href:'/international',key:'international'},
+      {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      {href:'/analytics/official',key:'analytics'},{href:'/analytics/international',key:'analytics'},
+    ];
+    document.querySelectorAll('a[href]').forEach(a => {
+      const gate = featureGates.find(g=>a.getAttribute('href')===g.href);
+      if (!gate||f[gate.key]) return;
+      a.style.opacity='0.35'; a.style.cursor='not-allowed';
+      a.addEventListener('click',e=>{
+        e.preventDefault();
+        if(confirm('This feature requires a higher plan.\nGo to your account to upgrade?'))
+          window.location.href='/account';
+      });
+    });
+    // Gate settings and DB tools buttons for free/starter
+    if (ctx.logged_in && ['Free','Starter'].includes(ctx.plan_name)) {
+      document.querySelectorAll('[data-gate="settings"],[data-gate="dbtools"]').forEach(el=>{
+        el.style.opacity='0.35'; el.style.cursor='not-allowed';
+        el.addEventListener('click',e=>{
+          e.preventDefault(); e.stopPropagation();
+          alert('This feature requires Pro or Premium plan.');
+        });
+      });
+    }
+    // Load user selected stores for logo filtering
+    if (ctx.logged_in) {
+      try {
+        const sel = await fetch('/api/user/selected-stores').then(r=>r.json());
+        if (sel && sel.length) window._userStoreNames = new Set(sel.map(s=>s.name));
+      } catch(e){}
+    }
+    maybeLoadLogos();
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
 </body>
 </html>

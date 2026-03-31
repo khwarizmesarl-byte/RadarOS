@@ -59,6 +59,32 @@
   <script src="/static/theme.js"></script>
 </head>
 <body>
+<div style="padding:0 1.25rem;"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.6rem 0;margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a href="/" style="text-decoration:none;display:flex;align-items:center;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:36px;width:auto;display:block;">
+  </a>
+    <span style="color:#1e293b;font-size:0.8rem;margin-left:0.5rem;">|</span>
+    <span style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-left:0.3rem;">⚙ Advanced</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+    <a href="/" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Dashboard</a>
+    <a href="/stores" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+    <a href="/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+    <a href="/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+    <a href="/analytics" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a><a href="/analytics/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">📊 Brand</a><a href="/analytics/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">Intl</a>
+    <a href="/advanced" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+    <a href="/radarlist" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">RadarList</a>
+    <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'"<div id="userNavArea" style="display:none;align-items:center;gap:0.4rem;">
+        <span id="userNavName" style="font-size:0.7rem;color:#a5b4fc;font-weight:600;"></span>
+        <span id="userNavPlan" style="font-size:0.62rem;padding:1px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;"></span>
+        <a href="/account" style="font-size:0.7rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background=''">Account</a>
+        <a href="/api/user/logout" style="font-size:0.7rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background=''">Logout</a>
+      </div>
+      <a bout</a>
+  </div>
+</div></div>
+
 
 <div class="nav">
   <div style="display:flex;align-items:center;gap:.6rem;">
@@ -446,5 +472,75 @@ function doExport(fmt){
   };
   </script>
   <script src="/static/ai_assistant.js"></script>
+
+<style>
+  .about-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+  .about-overlay.open{display:flex;}
+  .about-card{background:#0d1420;border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:2.5rem 3rem;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.8);max-width:400px;width:90%;}
+  @keyframes popIn{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+</style>
+<div class="about-overlay" id="aboutModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="about-card">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:48px;width:auto;display:block;margin:0 auto 1.5rem;">
+    <div style="height:1px;background:rgba(99,102,241,0.12);margin-bottom:1.5rem"></div>
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.9rem">Developed by</div>
+    <a href="https://www.khwarizme.com/" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:1.25rem;text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <div style="background:#fff;border-radius:12px;padding:0.75rem 1.5rem;">
+        <img src="/static/khwarizme_logo.png" alt="Khwarizme" style="height:52px;width:auto;display:block;">
+      </div>
+    </a>
+    <div style="font-size:0.72rem;color:#64748b;font-family:monospace;margin-bottom:1.75rem">© 2026 · All rights reserved</div>
+    <button onclick="document.getElementById('aboutModal').classList.remove('open')"
+      style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:0.45rem 1.75rem;font-size:0.78rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    if (ctx.logged_in) {
+      const a = document.getElementById('userNavArea');
+      if (a) {
+        a.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+    }
+    const f = ctx.features || {};
+    // Gate settings and DB tools for free plan
+    const featureGates = [
+      {href:'/official',key:'official'},{href:'/international',key:'international'},
+      {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      {href:'/analytics/official',key:'analytics'},{href:'/analytics/international',key:'analytics'},
+    ];
+    document.querySelectorAll('a[href]').forEach(a => {
+      const gate = featureGates.find(g=>a.getAttribute('href')===g.href);
+      if (!gate||f[gate.key]) return;
+      a.style.opacity='0.35'; a.style.cursor='not-allowed';
+      a.addEventListener('click',e=>{
+        e.preventDefault();
+        if(confirm('This feature requires a higher plan.\nGo to your account to upgrade?'))
+          window.location.href='/account';
+      });
+    });
+    // Gate settings and DB tools buttons for free/starter
+    if (ctx.logged_in && ['Free','Starter'].includes(ctx.plan_name)) {
+      document.querySelectorAll('[data-gate="settings"],[data-gate="dbtools"]').forEach(el=>{
+        el.style.opacity='0.35'; el.style.cursor='not-allowed';
+        el.addEventListener('click',e=>{
+          e.preventDefault(); e.stopPropagation();
+          alert('This feature requires Pro or Premium plan.');
+        });
+      });
+    }
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
 </body>
 </html>

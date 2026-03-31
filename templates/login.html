@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — RadarOS</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:2.5rem;width:100%;max-width:380px;}
+  .logo{text-align:center;margin-bottom:2rem;}
+  .logo img{height:36px;margin-bottom:0.5rem;}
+  .logo h1{font-size:1rem;font-weight:700;color:#EEEDFE;}
+  .logo p{font-size:0.72rem;color:#475569;}
+  label{font-size:0.72rem;color:#64748b;display:block;margin-bottom:4px;}
+  input{width:100%;background:#020817;border:1px solid #1e293b;border-radius:8px;padding:0.6rem 0.85rem;font-size:0.875rem;color:#e2e8f0;outline:none;transition:border 0.15s;margin-bottom:0.75rem;}
+  input:focus{border-color:#6366f1;}
+  .btn{width:100%;background:#6366f1;color:#fff;border:none;border-radius:8px;padding:0.65rem;font-size:0.875rem;font-weight:600;cursor:pointer;margin-top:0.5rem;}
+  .btn:hover{background:#4f46e5;}
+  .btn:disabled{background:#334155;cursor:not-allowed;}
+  .error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;color:#f87171;margin-bottom:0.75rem;display:none;}
+  .success{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;color:#34d399;margin-bottom:0.75rem;}
+  .link{color:#6366f1;text-decoration:none;font-size:0.78rem;}
+  .link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'">
+    <h1>Sign In</h1>
+    <p>Market Intelligence Platform</p>
+  </div>
+
+  <div id="successMsg" class="success" style="display:none;">Account created! Please sign in.</div>
+  <div class="error" id="errMsg"></div>
+
+  <label>Email Address</label>
+  <input type="email" id="email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')login()">
+  <label>Password</label>
+  <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+
+  <button class="btn" onclick="login()" id="loginBtn">Sign In →</button>
+
+  <div style="text-align:center;margin-top:1rem;font-size:0.78rem;color:#475569;">
+    No account? <a href="/register" class="link">Create one</a>
+  </div>
+</div>
+
+<script>
+// Show success message if coming from registration
+if (new URLSearchParams(location.search).get('registered')) {
+  document.getElementById('successMsg').style.display = 'block';
+}
+
+async function login() {
+  const btn   = document.getElementById('loginBtn');
+  const err   = document.getElementById('errMsg');
+  const email = document.getElementById('email').value.trim();
+  const pwd   = document.getElementById('pwd').value;
+  err.style.display = 'none';
+  if (!email||!pwd) { err.textContent='Email and password required'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Signing in...';
+  try {
+    const res  = await fetch('/api/user/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
+    const data = await res.json();
+    if (data.ok) {
+      window.location.href = (data.setup_done == 1 || data.setup_done === true) ? '/' : '/setup';
+    } else {
+      err.textContent = data.error||'Login failed';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
+  }
+  btn.disabled=false; btn.textContent='Sign In →';
+}
+</script>
+</body>
+</html>

@@ -60,14 +60,26 @@ from modules.brickradar.scrapers_official import (
 # ── Paths ──────────────────────────────────────────────────────────────────────
 APP_DIR       = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(APP_DIR, "Brickradar", "app", "templates")
-STATIC_DIR    = os.path.join(APP_DIR, "Brickradar", "app", "static")
+STATIC_DIR          = os.path.join(APP_DIR, "Brickradar", "app", "static")
+PLATFORM_STATIC_DIR = os.path.join(APP_DIR, "static", "platform")
+PLATFORM_TMPL_DIR   = os.path.join(APP_DIR, "templates")
+os.makedirs(PLATFORM_STATIC_DIR, exist_ok=True)
+os.makedirs(PLATFORM_TMPL_DIR, exist_ok=True)
 DB_PATH       = os.path.join(APP_DIR, "Brickradar", "app", "data", "lego_tracker.sqlite3")
 TEMPLATE_FILE = "dashboard.html"
 
 # ── API keys ───────────────────────────────────────────────────────────────────
 from dotenv import load_dotenv
 load_dotenv()
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
+ADMIN_EMAIL         = os.getenv("ADMIN_EMAIL", "khwarizmesarl@gmail.com")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "")
+ADMIN_PASSWORD_SALT = os.getenv("ADMIN_PASSWORD_SALT", "")
+ADMIN_SESSION_HOURS = int(os.getenv("ADMIN_SESSION_HOURS", "24"))
+GMAIL_APP_PASSWORD  = os.getenv("GMAIL_APP_PASSWORD", "")
+_admin_sessions: dict = {}
+_otp_store:      dict = {}
+_login_attempts: dict = {}
 GROQ_API_KEY      = os.getenv("GROQ_API_KEY", "")
 
 # ── Init ───────────────────────────────────────────────────────────────────────
@@ -79,6 +91,8 @@ templates.env.filters["tojson"] = lambda v: json.dumps(v)
 
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if os.path.isdir(PLATFORM_STATIC_DIR):
+    app.mount("/assets", StaticFiles(directory=PLATFORM_STATIC_DIR), name="platform_static")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -100,16 +114,42 @@ def get_all_store_names() -> List[str]:
     from core.utils import order_stores
     return order_stores(names)
 
-def _lsf() -> str:
-    """Latest snapshot filter SQL snippet."""
-    return "AND captured_at IN (SELECT MAX(captured_at) FROM snapshots GROUP BY store)"
+def _lsf(source_type: str = "local") -> str:
+    """Latest snapshot filter by source_type. Defaults to local."""
+    if source_type == "local":
+        return f"AND source_type='{source_type}' AND captured_at IN (SELECT MAX(captured_at) FROM snapshots GROUP BY store)"
+    return f"AND source_type='{source_type}' AND id IN (SELECT MAX(id) FROM snapshots WHERE source_type='{source_type}' GROUP BY store, item_number)"
 
 
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    store_names = get_all_store_names()
+    qp          = request.query_params
+    source_tier = qp.get("tier", "local")   # local | official | international
+
+    # Filter store names by tier
+    all_store_names = get_all_store_names()
+
+    # Build tier → store name mapping from config
+    _local_stores       = (
+        set(SHOPIFY_STORES.keys()) |
+        set(BIGCOMMERCE_STORES.keys()) |
+        {"BRICKSHOP", "PlayOne", "Brix & Figures", "Thetoystorelb", "Joueclubliban"}
+    )
+    _official_stores    = set(OFFICIAL_STORES.keys())
+    _intl_stores        = set(INTERNATIONAL_STORES.keys())
+
+    if source_tier == "official":
+        store_names = [s for s in all_store_names if s in _official_stores]
+        if not store_names:
+            store_names = list(_official_stores)
+    elif source_tier == "international":
+        store_names = [s for s in all_store_names if s in _intl_stores]
+        if not store_names:
+            store_names = list(_intl_stores)
+    else:  # local (default)
+        store_names = [s for s in all_store_names if s in _local_stores] or all_store_names
 
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
@@ -304,7 +344,236 @@ def dashboard(request: Request):
         "last_updated": meta_get(DB_PATH, "last_updated") or "never",
         "alerts_unread": alerts_unread_count(DB_PATH),
         "price_range": "all", "min_price": "", "max_price": "",
+        "source_tier": source_tier,
     })
+
+
+# ── Official Brands Catalog ────────────────────────────────────────────────────
+
+@app.get("/official", response_class=HTMLResponse)
+def official_catalog(request: Request):
+    qp            = request.query_params
+    search_q      = qp.get("q", "").strip().lower()
+    selected_brand = qp.get("brand", "All")
+    selected_theme = qp.get("theme", "All")
+    avail_filter  = qp.get("avail", "all")
+    sort          = qp.get("sort", "title")
+    per_page      = int(qp.get("per_page", "96") or "96")
+    page          = max(1, int(qp.get("page", "1") or "1"))
+
+    # Fetch latest snapshots for official stores only
+    conn = db_connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT s.store, s.item_number, s.title, s.brand, s.theme, s.category,
+               s.price, s.compare_at, s.availability, s.link, s.image_url
+        FROM snapshots s
+        INNER JOIN (
+            SELECT store, item_number, MAX(id) AS max_id
+            FROM snapshots WHERE source_type='official'
+            GROUP BY store, item_number
+        ) t ON s.id = t.max_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    # Build product list
+    STORE_TO_BRAND = {
+        "CaDA Official":  "CADA",
+        "Mould King":     "MOULD KING",
+        "LEGO Official":  "LEGO",
+    }
+    products = []
+    for r in rows:
+        brand = STORE_TO_BRAND.get(r["store"], (r["store"] or "").upper())
+        theme = (r["theme"] or r["category"] or "").strip()
+        title = (r["title"] or "").strip()
+        avail = (r["availability"] or "").lower()
+
+        products.append({
+            "item_number": r["item_number"] or "",
+            "title":       title,
+            "brand":       brand,
+            "theme":       theme,
+            "category":    r["category"] or "",
+            "image_url":   r["image_url"] or "",
+            "stores": {
+                r["store"]: StoreOffer(
+                    price=r["price"],
+                    availability=r["availability"] or "N/A",
+                    link=r["link"] or "",
+                    discount_pct=compute_discount_pct(r["compare_at"], r["price"]),
+                )
+            },
+        })
+
+    # Build filter lists BEFORE filtering (so dropdowns always show all options)
+    all_brands = ["All"] + sorted({p["brand"] for p in products if p["brand"]})
+    all_themes = ["All"] + sorted({p["theme"] for p in products if p["theme"]})
+
+    # Filters
+    if search_q:
+        products = [p for p in products if search_q in p["title"].lower() or search_q in p["item_number"].lower()]
+    if selected_brand != "All":
+        products = [p for p in products if p["brand"] == selected_brand.upper()]
+    if selected_theme != "All":
+        products = [p for p in products if p["theme"] == selected_theme]
+    if avail_filter == "instock":
+        products = [p for p in products if any("in" in (o.availability or "").lower() for o in p["stores"].values())]
+    elif avail_filter == "outstock":
+        products = [p for p in products if any("out" in (o.availability or "").lower() for o in p["stores"].values())]
+
+    # Sort
+    if sort == "price_asc":
+        products.sort(key=lambda p: min((o.price or 9999 for o in p["stores"].values()), default=9999))
+    elif sort == "price_desc":
+        products.sort(key=lambda p: min((o.price or 0 for o in p["stores"].values()), default=0), reverse=True)
+    else:
+        products.sort(key=lambda p: (p["brand"], p["title"]))
+
+    # Paginate
+    total       = len(products)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page        = min(page, total_pages)
+    page_rows   = products[(page - 1) * per_page : page * per_page]
+
+    return templates.TemplateResponse("official.html", {
+        "request":        request,
+        "rows":           page_rows,
+        "total":          total,
+        "page":           page,
+        "per_page":       per_page,
+        "total_pages":    total_pages,
+        "sort":           sort,
+        "search_q":       search_q,
+        "selected_brand": selected_brand,
+        "selected_theme": selected_theme,
+        "avail_filter":   avail_filter,
+        "all_brands":     all_brands,
+        "all_themes":     all_themes,
+        "last_updated":   meta_get(DB_PATH, "last_updated") or "never",
+        "alerts_unread":  alerts_unread_count(DB_PATH),
+    })
+
+
+@app.get("/international", response_class=HTMLResponse)
+def international_catalog(request: Request):
+    from modules.brickradar.config import INTERNATIONAL_STORES, INTERNATIONAL_COUNTRIES
+    qp               = request.query_params
+    search_q         = qp.get("q", "").strip().lower()
+    selected_source  = qp.get("source", "All")
+    selected_sub_tier = qp.get("sub_tier", "All")
+    selected_country = qp.get("country", "All")
+    selected_theme   = qp.get("theme", "All")
+    sort             = qp.get("sort", "title")
+    per_page         = int(qp.get("per_page", "96") or "96")
+    page             = max(1, int(qp.get("page", "1") or "1"))
+
+    # Fetch latest snapshots for international stores only
+    conn = db_connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT s.store, s.item_number, s.title, s.brand, s.theme,
+               s.price, s.compare_at, s.availability, s.link, s.image_url
+        FROM snapshots s
+        INNER JOIN (
+            SELECT store, item_number, MAX(id) AS max_id
+            FROM snapshots WHERE source_type='international'
+            GROUP BY store, item_number
+        ) t ON s.id = t.max_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    from collections import defaultdict
+    items = defaultdict(lambda: {"item_number": "", "title": "", "theme": "", "image_url": "", "stores": {}})
+    for r in rows:
+        key = r["item_number"] or r["title"]
+        it  = items[key]
+        it["item_number"] = r["item_number"] or ""
+        it["title"]       = (r["title"] or "").strip()
+        it["theme"]       = (r["theme"] or "").strip()
+        it["image_url"]   = r["image_url"] or it["image_url"]
+        it["stores"][r["store"]] = StoreOffer(
+            price=r["price"],
+            availability=r["availability"] or "N/A",
+            link=r["link"] or "",
+            discount_pct=compute_discount_pct(r["compare_at"], r["price"]),
+        )
+
+    products = list(items.values())
+
+    # Build store->sub_tier, country, currency from DB
+    _conn2 = db_connect(DB_PATH)
+    _cur2  = _conn2.cursor()
+    _cur2.execute("SELECT name, sub_tier, country_code, currency FROM stores WHERE source_type='international'")
+    store_sub_tier = {}
+    store_country  = {}
+    store_currency = {}
+    for _r in _cur2.fetchall():
+        store_sub_tier[_r["name"]] = _r["sub_tier"] or "regional"
+        store_country[_r["name"]]  = _r["country_code"] or "AE"
+        store_currency[_r["name"]] = _r["currency"] or "USD"
+    _conn2.close()
+
+    # Build dropdowns BEFORE filtering so they never collapse
+    all_themes_pre    = ["All"] + sorted({p["theme"] for p in products if p["theme"]})
+    all_sources_pre   = sorted({s for p in products for s in p["stores"]})
+    all_countries_pre = {k: v for k, v in INTERNATIONAL_COUNTRIES.items()
+                         if k in {store_country.get(s) for p in products for s in p["stores"]}}
+
+    # Filters
+    if search_q:
+        products = [p for p in products if search_q in p["title"].lower() or search_q in p["item_number"].lower()]
+    if selected_source != "All":
+        products = [p for p in products if selected_source in p["stores"]]
+    if selected_sub_tier != "All":
+        products = [p for p in products if any(store_sub_tier.get(s, "regional") == selected_sub_tier for s in p["stores"])]
+    if selected_country != "All":
+        products = [p for p in products if any(store_country.get(s, "") == selected_country for s in p["stores"])]
+    if selected_theme != "All":
+        products = [p for p in products if p["theme"] == selected_theme]
+
+    # Sort
+    if sort == "price_asc":
+        products.sort(key=lambda p: min((o.price or 9999 for o in p["stores"].values()), default=9999))
+    elif sort == "price_desc":
+        products.sort(key=lambda p: min((o.price or 0 for o in p["stores"].values()), default=0), reverse=True)
+    else:
+        products.sort(key=lambda p: p["title"].lower())
+
+    all_sources   = all_sources_pre
+    all_themes    = all_themes_pre
+    all_countries = all_countries_pre
+    intl_stores   = all_sources
+
+    total       = len(products)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page        = min(page, total_pages)
+    page_rows   = products[(page - 1) * per_page : page * per_page]
+
+    return templates.TemplateResponse("international.html", {
+        "request":            request,
+        "rows":               page_rows,
+        "total":              total,
+        "page":               page,
+        "per_page":           per_page,
+        "total_pages":        total_pages,
+        "sort":               sort,
+        "search_q":           search_q,
+        "selected_source":    selected_source,
+        "selected_sub_tier":  selected_sub_tier,
+        "selected_country":   selected_country,
+        "selected_theme":     selected_theme,
+        "all_sources":        all_sources,
+        "all_themes":         all_themes,
+        "all_countries":      all_countries,
+        "intl_stores":        intl_stores,
+        "store_currency":     store_currency,
+        "last_updated":       meta_get(DB_PATH, "last_updated") or "never",
+        "alerts_unread":      alerts_unread_count(DB_PATH),
+    })
+
 
 
 # ── Refresh / SSE ──────────────────────────────────────────────────────────────
@@ -337,6 +606,143 @@ def api_refresh():
     _t.Thread(target=_run, daemon=True).start()
     done_ev.wait(timeout=600)
     return JSONResponse({"ok": True})
+
+
+@app.post("/api/refresh/local")
+def api_refresh_local():
+    import threading
+    def _run():
+        from core.engine import refresh_all
+        refresh_all(
+            db_path=DB_PATH,
+            shopify_stores={k: {**v, "normalize_theme_fn": normalize_theme_category_from_shopify} for k, v in SHOPIFY_STORES.items()},
+            bigcommerce_stores=BIGCOMMERCE_STORES,
+            fetch_html_stores_fn=fetch_html_stores,
+            source_type_filter="local",
+        )
+    threading.Thread(target=_run, daemon=True).start()
+    return JSONResponse({"ok": True, "message": "Local refresh started"})
+
+
+@app.post("/api/refresh/official")
+async def api_refresh_official(request: Request):
+    import threading
+    from datetime import datetime as _dt
+    body       = {}
+    try: body  = await request.json()
+    except: pass
+    store_filter = body.get("store", None)  # None = all official stores
+
+    def _run():
+        try:
+            from modules.brickradar.scrapers_official import fetch_official_stores
+            from core.db import persist_snapshot
+            captured_at = _dt.utcnow().isoformat()
+
+            # Load country codes from DB for persist
+            conn = db_connect(DB_PATH)
+            cur  = conn.cursor()
+            cur.execute("SELECT name, country_code FROM stores WHERE source_type='official' AND enabled=1")
+            country_map = {r["name"]: r["country_code"] for r in cur.fetchall()}
+            conn.close()
+
+            catalogs_by_store = {}
+            def _progress(msg): print(f"[official] {msg}")
+
+            # fetch_official_stores returns list of catalogs — need store names too
+            # Use per-store approach so we can map country_code correctly
+            import sqlite3 as _sq
+            conn2 = _sq.connect(DB_PATH)
+            conn2.row_factory = _sq.Row
+            cur2  = conn2.cursor()
+            cur2.execute("SELECT name, base_url, platform, collection_slug, vat_multiplier, lego_only FROM stores WHERE source_type='official' AND enabled=1")
+            db_stores = [dict(r) for r in cur2.fetchall()]
+            conn2.close()
+
+            from modules.brickradar.scrapers_official import fetch_store_by_platform
+            for s in db_stores:
+                name = s["name"]
+                if store_filter and name != store_filter:
+                    continue
+                try:
+                    catalog = fetch_store_by_platform(
+                        name=name,
+                        base_url=s["base_url"],
+                        platform=s["platform"],
+                        collection_slug=s.get("collection_slug") or "",
+                        db_path=DB_PATH,
+                        vat_multiplier=float(s.get("vat_multiplier") or 1.0),
+                        lego_only=bool(s.get("lego_only")),
+                    )
+                    if catalog:
+                        persist_snapshot(DB_PATH, captured_at, name, catalog,
+                                         source_type="official",
+                                         country_code=country_map.get(name, "CN"))
+                        print(f"[{name}] refreshed {len(catalog)} products")
+                except Exception as e:
+                    print(f"[{name}] ERROR: {e}")
+        except Exception as e:
+            print(f"[official refresh] ERROR: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    store_msg = store_filter or "all official stores"
+    return JSONResponse({"ok": True, "message": f"Official refresh started for {store_msg}"})
+
+
+@app.post("/api/refresh/international")
+async def api_refresh_international(request: Request):
+    import threading
+    from datetime import datetime as _dt
+    body = {}
+    try: body = await request.json()
+    except: pass
+    store_filter = body.get("store", None)
+
+    def _run():
+        try:
+            from modules.brickradar.scrapers_official import fetch_store_by_platform
+            from core.db import persist_snapshot
+            import sqlite3 as _sq
+            captured_at = _dt.utcnow().isoformat()
+
+            conn = _sq.connect(DB_PATH)
+            conn.row_factory = _sq.Row
+            cur  = conn.cursor()
+            cur.execute("SELECT name, base_url, platform, collection_slug, vat_multiplier, lego_only, country_code FROM stores WHERE source_type='international' AND enabled=1")
+            db_stores = [dict(r) for r in cur.fetchall()]
+            conn.close()
+
+            for s in db_stores:
+                name = s["name"]
+                if store_filter and name != store_filter:
+                    continue
+                platform = (s.get("platform") or "").lower()
+                if platform not in ("shopify", "woocommerce", "ueeshop"):
+                    print(f"[{name}] platform '{platform}' not yet scrapable — skipping")
+                    continue
+                try:
+                    catalog = fetch_store_by_platform(
+                        name=name,
+                        base_url=s["base_url"],
+                        platform=platform,
+                        collection_slug=s.get("collection_slug") or "",
+                        db_path=DB_PATH,
+                        vat_multiplier=float(s.get("vat_multiplier") or 1.0),
+                        lego_only=bool(s.get("lego_only")),
+                    )
+                    if catalog:
+                        persist_snapshot(DB_PATH, captured_at, name, catalog,
+                                         source_type="international",
+                                         country_code=s.get("country_code", "AE"))
+                        print(f"[{name}] refreshed {len(catalog)} products")
+                except Exception as e:
+                    print(f"[{name}] ERROR: {e}")
+        except Exception as e:
+            print(f"[international refresh] ERROR: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    store_msg = store_filter or "all international stores"
+    return JSONResponse({"ok": True, "message": f"International refresh started for {store_msg}"})
 
 
 @app.get("/api/refresh/stream")
@@ -377,7 +783,7 @@ def api_refresh_stream(stores: str = ""):
 
         if selected:
             def _label(t): return t[1] or ("BRICKSHOP" if t[0] == "brickshop" else ("PlayOne" if t[0] == "playone" else t[0]))
-            tasks = [t for t in tasks if _label(t) in selected or t[0] == "official"]
+            tasks = [t for t in tasks if _label(t) in selected]
 
         total = len(tasks)
         q     = _queue.Queue()
@@ -408,7 +814,7 @@ def api_refresh_stream(stores: str = ""):
                         cfg.get("lego_only", True), float(cfg.get("vat_multiplier", 1.0))
                     )))
                 elif kind == "official":
-                    _fn = {"CaDA Official": fetch_cada, "Mould King": fetch_mouldking, "LEGO Official": fetch_lego_com}.get(label)
+                    _fn = {"CaDA Official": fetch_cada, "Mould King": lambda: fetch_mouldking(DB_PATH), "LEGO Official": fetch_lego_com}.get(label)
                     if _fn:
                         q.put(("ok", label, _fn()))
                     else:
@@ -507,6 +913,30 @@ def api_refresh_stream(stores: str = ""):
 
 # ── Alerts ─────────────────────────────────────────────────────────────────────
 
+@app.get("/api/compare/{item_number}")
+def api_compare(item_number: str):
+    conn = db_connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT s.store, s.title, s.price, s.availability, s.link,
+               s.image_url, s.source_type, s.country_code, st.currency
+        FROM snapshots s
+        LEFT JOIN stores st ON st.name = s.store
+        INNER JOIN (SELECT store, MAX(id) as max_id FROM snapshots WHERE item_number=? GROUP BY store) t ON s.id=t.max_id
+        WHERE s.item_number=? ORDER BY s.source_type, s.price ASC
+    """, (item_number, item_number))
+    rows = cur.fetchall()
+    conn.close()
+    title=""; image_url=""; results=[]
+    for r in rows:
+        if r["title"] and not title: title=r["title"]
+        if r["image_url"] and not image_url: image_url=r["image_url"]
+        results.append({"store":r["store"],"price":r["price"],"currency":r["currency"] or "USD",
+                        "availability":r["availability"] or "","link":r["link"] or "",
+                        "source_type":r["source_type"] or "local","country_code":r["country_code"] or ""})
+    return JSONResponse({"item_number":item_number,"title":title,"image_url":image_url,"results":results})
+
+
 @app.post("/api/alerts/mark_read")
 def api_mark_alerts_read():
     alerts_mark_read(DB_PATH)
@@ -604,7 +1034,12 @@ def api_fetch_all_logos():
 
 
 @app.get("/api/stores")
-def api_get_stores():
+def api_get_stores(request: Request):
+    qp          = request.query_params
+    source_type = qp.get("source_type", "")
+    sub_tier    = qp.get("sub_tier", "")
+    country_code = qp.get("country_code", "")
+
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     cur.execute("SELECT store, COUNT(DISTINCT item_number) as cnt, MAX(captured_at) as last_seen FROM snapshots GROUP BY store")
@@ -613,39 +1048,21 @@ def api_get_stores():
     db_rows = {r["name"]: dict(r) for r in cur.fetchall()}
     conn.close()
 
-    hardcoded = []
-    for sname, cfg in SHOPIFY_STORES.items():
-        hardcoded.append({"id": None, "name": sname, "base_url": cfg["url"], "platform": "shopify",
-                           "vat_multiplier": cfg.get("vat_multiplier", 1.0),
-                           "collection_slug": cfg.get("collection_slug"),
-                           "new_arrivals_collection": NEW_ARRIVAL_COLLECTIONS.get(sname),
-                           "enabled": 1, "hardcoded": True, "lego_only": cfg.get("lego_only", False)})
-    hardcoded.append({"id": None, "name": "BRICKSHOP", "base_url": "https://brickshop.me", "platform": "woocommerce", "vat_multiplier": 1.0, "collection_slug": None, "new_arrivals_collection": None, "enabled": 1, "hardcoded": True, "lego_only": False})
-    hardcoded.append({"id": None, "name": "PlayOne",   "base_url": "https://playone.com.lb", "platform": "html", "vat_multiplier": 1.0, "collection_slug": None, "new_arrivals_collection": None, "enabled": 1, "hardcoded": True, "lego_only": True})
-    for bc_name, bc_cfg in BIGCOMMERCE_STORES.items():
-        hardcoded.append({"id": None, "name": bc_name, "base_url": bc_cfg["url"], "platform": "bigcommerce",
-                           "vat_multiplier": bc_cfg.get("vat_multiplier", 1.0),
-                           "collection_slug": bc_cfg.get("collection_slug"),
-                           "new_arrivals_collection": None, "enabled": 1, "hardcoded": True,
-                           "lego_only": bc_cfg.get("lego_only", True)})
-
     all_stores = []
-    hardcoded_names = set()
-    for s in hardcoded:
-        snap = snap_counts.get(s["name"], {})
-        s["product_count"] = snap.get("count", 0)
-        s["last_scraped"]  = snap.get("last_seen", "")
-        all_stores.append(s)
-        hardcoded_names.add(s["name"])
-
     for name, row in db_rows.items():
-        if name in hardcoded_names:
-            continue
         snap = snap_counts.get(name, {})
         row["product_count"] = snap.get("count", 0)
         row["last_scraped"]  = snap.get("last_seen", row.get("last_scraped", ""))
         row["hardcoded"]     = False
         all_stores.append(row)
+
+    # Filter by tier/country if requested
+    if source_type:
+        all_stores = [s for s in all_stores if (s.get("source_type") or "") == source_type]
+    if sub_tier:
+        all_stores = [s for s in all_stores if (s.get("sub_tier") or "") == sub_tier]
+    if country_code:
+        all_stores = [s for s in all_stores if (s.get("country_code") or "") == country_code]
 
     return JSONResponse(all_stores)
 
@@ -654,50 +1071,182 @@ def api_get_stores():
 async def api_test_store(request: Request):
     import httpx as _httpx
     body            = await request.json()
-    url             = ("https://" + (body.get("url") or "").strip().rstrip("/").lstrip("https://").lstrip("http://"))
+    raw_url         = (body.get("url") or "").strip().rstrip("/")
+    if not raw_url.startswith("http"):
+        raw_url = "https://" + raw_url.lstrip("http://").lstrip("https://")
+    url             = raw_url
     collection_slug = (body.get("collection_slug") or "").strip() or None
-    result = {"url": url, "platform": None, "product_count": 0, "samples": [], "error": None, "collection_slug": collection_slug}
+    result = {
+        "url": url, "platform": None, "product_count": 0, "samples": [],
+        "error": None, "collection_slug": collection_slug,
+        "scrapable": False, "tier": None, "tier_cost": None,
+        "block_type": None, "diagnosis": None,
+    }
 
     def _products_url(base, page, slug=None):
         if slug: return f"{base}/collections/{slug}/products.json?limit=250&page={page}"
         return f"{base}/products.json?limit=250&page={page}"
 
     try:
-        r = _httpx.get(_products_url(url, 1, collection_slug), timeout=15, follow_redirects=True, headers=HEADERS)
-        if r.status_code == 200:
-            products = r.json().get("products") or []
-            if products:
-                result["platform"] = "shopify"
-                page, total = 1, 0
-                with _httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
-                    while True:
-                        pr = client.get(_products_url(url, page, collection_slug))
-                        if pr.status_code != 200: break
-                        prods = pr.json().get("products") or []
-                        if not prods: break
-                        total += len(prods)
-                        if len(prods) < 250 or page >= 5: break
-                        page += 1
-                result["product_count"] = total
-                for p in products[:5]:
-                    title       = (p.get("title") or "").strip()
-                    item_number = extract_item_number(title)
-                    if not item_number:
-                        for v in (p.get("variants") or []):
-                            item_number = extract_item_number(v.get("sku") or "")
-                            if item_number: break
-                    variants = p.get("variants") or []
-                    price    = safe_float(variants[0].get("price")) if variants else None
-                    images   = p.get("images") or []
-                    result["samples"].append({"title": title, "item_number": item_number or "—", "price": price, "image": images[0].get("src", "") if images else ""})
-            else:
-                result["error"] = "Shopify endpoint returned no products"
+        import re as _re
+        # Step 1: fetch homepage to detect platform
+        try:
+            home = _httpx.get(url, timeout=12, follow_redirects=True, headers=HEADERS)
+            html = home.text.lower()
+            status = home.status_code
+        except Exception as e:
+            result["error"] = str(e)
+            result["diagnosis"] = "Could not reach the store — check the URL or try again."
+            result["tier"] = "unreachable"
+            return JSONResponse(result)
+
+        # Detect platform from HTML signatures
+        if "cdn.shopify" in html:
+            detected_platform = "shopify"
+        elif "woocommerce" in html:
+            detected_platform = "woocommerce"
+        elif "bigcommerce" in html:
+            detected_platform = "bigcommerce"
+        elif "mage/" in html or "magento" in html:
+            detected_platform = "magento"
+        elif "wixsite" in html or "wix.com" in html:
+            detected_platform = "wix"
+        elif "squarespace" in html:
+            detected_platform = "squarespace"
+        elif "shopware" in html:
+            detected_platform = "shopware"
         else:
-            result["error"] = f"Not Shopify (HTTP {r.status_code})"
+            detected_platform = "unknown"
+
+        # Detect block type
+        block_type = None
+        if status == 403:
+            if "cloudflare" in html or "__cf_" in home.headers.get("server","").lower():
+                block_type = "cloudflare"
+            else:
+                block_type = "forbidden"
+        elif status == 429:
+            block_type = "rate_limited"
+        elif "datadome" in html or "_dd_" in html:
+            block_type = "datadome"
+        elif "kasada" in html:
+            block_type = "kasada"
+        elif status != 200:
+            block_type = f"http_{status}"
+
+        result["platform"] = detected_platform
+
+        # Step 2: Try Shopify products.json
+        try:
+            r = _httpx.get(_products_url(url, 1, collection_slug), timeout=12, follow_redirects=True, headers=HEADERS)
+            if r.status_code == 200 and r.text.strip().startswith("{"):
+                products = r.json().get("products") or []
+                if products:
+                    result["platform"] = "shopify"
+                    result["scrapable"] = True
+                    result["tier"] = "free"
+                    result["tier_cost"] = 0
+                    result["diagnosis"] = f"Shopify store detected — {len(products)} products visible via API. Ready to add."
+                    page, total = 1, 0
+                    with _httpx.Client(timeout=12, follow_redirects=True, headers=HEADERS) as client:
+                        while True:
+                            pr = client.get(_products_url(url, page, collection_slug))
+                            if pr.status_code != 200: break
+                            prods = pr.json().get("products") or []
+                            if not prods: break
+                            total += len(prods)
+                            if len(prods) < 250 or page >= 5: break
+                            page += 1
+                    result["product_count"] = total
+                    for p in products[:5]:
+                        title = (p.get("title") or "").strip()
+                        item_number = extract_item_number(title)
+                        if not item_number:
+                            for v in (p.get("variants") or []):
+                                item_number = extract_item_number(v.get("sku") or "")
+                                if item_number: break
+                        variants = p.get("variants") or []
+                        price = safe_float(variants[0].get("price")) if variants else None
+                        images = p.get("images") or []
+                        result["samples"].append({"title": title, "item_number": item_number or "—", "price": price, "image": images[0].get("src","") if images else ""})
+                    return JSONResponse(result)
+        except Exception:
+            pass
+
+        # Step 3: Try WooCommerce
+        try:
+            woo = _httpx.get(f"{url}/wp-json/wc/store/v1/products?per_page=5", timeout=10, follow_redirects=True, headers=HEADERS)
+            if woo.status_code == 200 and woo.text.strip().startswith("["):
+                prods = woo.json()
+                if prods:
+                    result["platform"] = "woocommerce"
+                    result["scrapable"] = True
+                    result["tier"] = "free"
+                    result["tier_cost"] = 0
+                    result["product_count"] = len(prods)
+                    result["diagnosis"] = f"WooCommerce store detected — API accessible. Ready to add."
+                    for p in prods[:5]:
+                        result["samples"].append({
+                            "title": p.get("name",""), "item_number": "—",
+                            "price": p.get("prices",{}).get("price",""), "image": ""
+                        })
+                    return JSONResponse(result)
+        except Exception:
+            pass
+
+        # Step 4: Classify blocked stores by tier
+        if detected_platform in ("magento", "shopware", "unknown") or block_type in ("cloudflare", "forbidden", "http_403"):
+            if block_type in ("datadome", "kasada") or detected_platform in ("magento",) and block_type == "cloudflare":
+                result["tier"] = "tier3"
+                result["tier_cost"] = 5.0
+                result["block_type"] = block_type or "advanced_antibot"
+                result["diagnosis"] = f"Advanced anti-bot protection detected ({block_type or 'DataDome/Kasada'}). Requires premium scraping service (~$5/mo). Submit a request and we'll set it up for you."
+            elif block_type == "cloudflare" or detected_platform in ("magento", "shopware"):
+                result["tier"] = "tier2"
+                result["tier_cost"] = 2.0
+                result["block_type"] = block_type or detected_platform
+                result["diagnosis"] = f"{detected_platform.title()} store with {'Cloudflare protection' if block_type=='cloudflare' else 'platform-level restrictions'}. Requires paid scraping proxy (~$2/mo). Submit a request and we'll set it up for you."
+            elif detected_platform in ("wix", "squarespace"):
+                result["tier"] = "tier4"
+                result["tier_cost"] = None
+                result["block_type"] = detected_platform
+                result["diagnosis"] = f"{detected_platform.title()} stores do not expose product data via API. Unfortunately this store cannot be scraped."
+            else:
+                result["tier"] = "tier2"
+                result["tier_cost"] = 2.0
+                result["block_type"] = block_type or "blocked"
+                result["diagnosis"] = f"Store is accessible (HTTP {status}) but no standard API found. Platform: {detected_platform}. May require a custom scraper (~$2/mo)."
+        else:
+            result["tier"] = "tier2"
+            result["tier_cost"] = 2.0
+            result["diagnosis"] = f"Platform detected: {detected_platform}. No accessible product API found. Submit a request for custom scraping support."
+
+        result["error"] = result["diagnosis"]
+        return JSONResponse(result)
+
     except Exception as e:
         result["error"] = str(e)
+        result["diagnosis"] = "Unexpected error during diagnosis."
+        result["tier"] = "unreachable"
+        return JSONResponse(result)
 
-    return JSONResponse(result)
+
+@app.post("/api/stores/request")
+async def api_store_request(request: Request):
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("""
+        INSERT INTO store_requests(url, platform, tier, tier_cost, block_type, name, email, notes)
+        VALUES (?,?,?,?,?,?,?,?)
+    """, (
+        body.get("url",""), body.get("platform",""), body.get("tier",""),
+        body.get("tier_cost"), body.get("block_type",""),
+        body.get("name",""), body.get("email",""), body.get("notes","")
+    ))
+    conn.commit()
+    conn.close()
+    print(f"[Store Request] {body.get('email')} requested {body.get('url')} ({body.get('tier')})")
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/stores/add")
@@ -710,15 +1259,21 @@ async def api_add_store(request: Request):
     new_arrivals    = (body.get("new_arrivals_collection") or "").strip() or None
     collection_slug = (body.get("collection_slug") or "").strip() or None
     lego_only       = int(bool(body.get("lego_only", False)))
+    source_type     = (body.get("source_type") or "local").strip()
+    sub_tier        = (body.get("sub_tier") or source_type).strip()
+    country_code    = (body.get("country_code") or "LB").strip()
+    currency        = (body.get("currency") or "USD").strip()
     if not name or not url:
         return JSONResponse({"ok": False, "error": "Name and URL required"}, status_code=400)
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     try:
         cur.execute("""
-            INSERT INTO stores(name, base_url, platform, vat_multiplier, new_arrivals_collection, collection_slug, lego_only, enabled)
-            VALUES(?,?,?,?,?,?,?,1)
-        """, (name, url, platform, vat, new_arrivals, collection_slug, lego_only))
+            INSERT INTO stores(name, base_url, platform, vat_multiplier, new_arrivals_collection,
+                               collection_slug, lego_only, enabled, source_type, sub_tier, country_code, currency)
+            VALUES(?,?,?,?,?,?,?,1,?,?,?,?)
+        """, (name, url, platform, vat, new_arrivals, collection_slug, lego_only,
+              source_type, sub_tier, country_code, currency))
         conn.commit()
     except Exception as e:
         conn.close()
@@ -753,6 +1308,16 @@ async def api_delete_store(request: Request):
 
 # ── Analytics ──────────────────────────────────────────────────────────────────
 
+@app.get("/analytics/official", response_class=HTMLResponse)
+def analytics_official_page():
+    f = os.path.join(APP_DIR, "Brickradar", "app", "templates", "analytics_official.html")
+    return HTMLResponse(open(f, encoding="utf-8").read() if os.path.exists(f) else "<h1>Not found</h1>")
+
+@app.get("/analytics/international", response_class=HTMLResponse)
+def analytics_international_page():
+    f = os.path.join(APP_DIR, "Brickradar", "app", "templates", "analytics_international.html")
+    return HTMLResponse(open(f, encoding="utf-8").read() if os.path.exists(f) else "<h1>Not found</h1>")
+
 @app.get("/analytics", response_class=HTMLResponse)
 def analytics_page():
     f = os.path.join(APP_DIR, "Brickradar", "app", "analytics.html")
@@ -760,10 +1325,10 @@ def analytics_page():
 
 
 @app.get("/api/analytics/kpis")
-def api_analytics_kpis():
+def api_analytics_kpis(source_type: str = "local"):
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
-    lsf  = _lsf()
+    lsf  = _lsf(source_type)
     cur.execute(f"SELECT COUNT(DISTINCT item_number) FROM snapshots WHERE 1=1 {lsf}")
     total_products = cur.fetchone()[0]
     cur.execute(f"SELECT COUNT(DISTINCT store) FROM snapshots WHERE 1=1 {lsf}")
@@ -783,7 +1348,7 @@ def api_analytics_kpis():
 
 
 @app.get("/api/analytics/items_per_brand_store")
-def api_items_per_brand_store():
+def api_items_per_brand_store(source_type: str = "local"):
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     cur.execute(f"SELECT store, UPPER(TRIM(brand)) as brand, COUNT(DISTINCT item_number) as cnt FROM snapshots WHERE brand IS NOT NULL AND brand != '' {_lsf()} GROUP BY store, brand ORDER BY store, cnt DESC")
@@ -793,7 +1358,7 @@ def api_items_per_brand_store():
 
 
 @app.get("/api/analytics/most_expensive_per_brand_store")
-def api_most_expensive_per_brand_store():
+def api_most_expensive_per_brand_store(source_type: str = "local"):
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     cur.execute(f"SELECT store, UPPER(TRIM(brand)) as brand, title, item_number, MAX(price) as price, link, image_url FROM snapshots WHERE price IS NOT NULL AND brand IS NOT NULL AND brand != '' {_lsf()} GROUP BY store, brand ORDER BY store, price DESC")
@@ -803,7 +1368,7 @@ def api_most_expensive_per_brand_store():
 
 
 @app.get("/api/analytics/items_per_theme_store")
-def api_items_per_theme_store():
+def api_items_per_theme_store(source_type: str = "local"):
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     cur.execute(f"SELECT store, TRIM(theme) as theme, COUNT(DISTINCT item_number) as cnt FROM snapshots WHERE theme IS NOT NULL AND theme != '' {_lsf()} GROUP BY store, theme ORDER BY cnt DESC")
@@ -823,7 +1388,7 @@ def api_new_arrivals_per_store():
 
 
 @app.get("/api/analytics/discounts_per_brand_store")
-def api_discounts_per_brand_store():
+def api_discounts_per_brand_store(source_type: str = "local"):
     conn = db_connect(DB_PATH)
     cur  = conn.cursor()
     cur.execute(f"SELECT store, UPPER(TRIM(brand)) as brand, COUNT(*) as cnt, AVG(ROUND((compare_at-price)/compare_at*100,1)) as avg_pct FROM snapshots WHERE compare_at IS NOT NULL AND compare_at > price AND brand IS NOT NULL AND brand != '' {_lsf()} GROUP BY store, brand ORDER BY cnt DESC")
@@ -974,6 +1539,711 @@ async def api_advanced_export(request: Request):
 
 
 # ── RadarList ──────────────────────────────────────────────────────────────────
+
+
+import hashlib as _hashlib
+import secrets as _secrets
+from datetime import datetime as _dt, timedelta as _td
+
+def _verify_admin_password(password: str) -> bool:
+    if not ADMIN_PASSWORD_HASH or not ADMIN_PASSWORD_SALT:
+        return password == "Kh@R1z_Br!ck#2026"
+    h = _hashlib.sha256((ADMIN_PASSWORD_SALT + password).encode()).hexdigest()
+    return h == ADMIN_PASSWORD_HASH
+
+def _create_session() -> str:
+    token = _secrets.token_hex(32)
+    _admin_sessions[token] = _dt.utcnow() + _td(hours=ADMIN_SESSION_HOURS)
+    return token
+
+
+def _get_user_session(request: Request) -> dict:
+    token = request.cookies.get("user_session")
+    if not token or f"user_{token}" not in _admin_sessions:
+        return None
+    sess = _admin_sessions[f"user_{token}"]
+    if _dt.utcnow() > sess["expires"]:
+        del _admin_sessions[f"user_{token}"]
+        return None
+    return sess
+
+def _get_user_features(request: Request) -> dict:
+    import json as _json
+    sess = _get_user_session(request)
+    if not sess: return None
+    conn = db_connect(DB_PATH)
+    user = conn.execute("""SELECT u.id, u.name, u.email, u.plan_id, u.setup_done,
+               p.name as plan_name, p.price as plan_price, p.features
+               FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?""",
+               (sess["user_id"],)).fetchone()
+    conn.close()
+    if not user: return None
+    features = {}
+    try: features = _json.loads(user["features"] or "{}")
+    except: pass
+    return {"user_id":user["id"],"name":user["name"],"email":user["email"],
+            "plan_name":user["plan_name"],"plan_price":user["plan_price"],
+            "setup_done":user["setup_done"],"features":features}
+
+def _check_session(request: Request) -> bool:
+    token = request.cookies.get("admin_session")
+    if not token or token not in _admin_sessions: return False
+    if _dt.utcnow() > _admin_sessions[token]:
+        del _admin_sessions[token]; return False
+    return True
+
+def _send_otp(email: str) -> str:
+    otp = str(_secrets.randbelow(900000) + 100000)
+    _otp_store[email] = (otp, _dt.utcnow() + _td(minutes=5))
+    if GMAIL_APP_PASSWORD:
+        try:
+            import smtplib, ssl
+            from email.mime.text import MIMEText
+            msg = MIMEText(f"RadarOS Admin OTP: {otp}\n\nValid 5 minutes.")
+            msg["Subject"] = "RadarOS Admin Login"
+            msg["From"] = ADMIN_EMAIL; msg["To"] = ADMIN_EMAIL
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context()) as s:
+                s.login(ADMIN_EMAIL, GMAIL_APP_PASSWORD)
+                s.sendmail(ADMIN_EMAIL, ADMIN_EMAIL, msg.as_string())
+        except Exception as e:
+            print(f"[Admin] OTP email failed: {e}")
+    print(f"[Admin] OTP: {otp}")
+    return otp
+
+def _verify_otp(email: str, otp: str) -> bool:
+    if email not in _otp_store: return False
+    stored, expiry = _otp_store[email]
+    if _dt.utcnow() > expiry: del _otp_store[email]; return False
+    if otp == stored: del _otp_store[email]; return True
+    return False
+
+def _open_tmpl(filename: str) -> str:
+    """Open template from platform templates dir first, then BrickRadar."""
+    platform_path = os.path.join(PLATFORM_TMPL_DIR, filename)
+    brickradar_path = os.path.join(APP_DIR, "Brickradar", "app", "templates", filename)
+    for p in [platform_path, brickradar_path]:
+        if os.path.exists(p):
+            return open(p, encoding="utf-8").read()
+    return f"<h1>{filename} not found</h1>"
+
+@app.get("/admin/login", response_class=HTMLResponse)
+def admin_login_page(): return HTMLResponse(_open_tmpl("admin_login.html"))
+
+@app.post("/admin/login")
+async def admin_login(request: Request):
+    from fastapi.responses import RedirectResponse
+    body = await request.json()
+    ip   = request.client.host
+    now  = _dt.utcnow()
+    attempts, last = _login_attempts.get(ip, (0, now))
+    if attempts >= 5 and (now - last).seconds < 300:
+        return JSONResponse({"ok": False, "error": "Too many attempts. Wait 5 minutes."}, status_code=429)
+    if not _verify_admin_password(body.get("password", "")):
+        _login_attempts[ip] = (attempts + 1, now)
+        return JSONResponse({"ok": False, "error": "Invalid password."})
+    _login_attempts.pop(ip, None)
+    if GMAIL_APP_PASSWORD:
+        _send_otp(ADMIN_EMAIL)
+        return JSONResponse({"ok": True, "otp_required": True})
+    token = _create_session()
+    resp  = JSONResponse({"ok": True, "otp_required": False})
+    resp.set_cookie("admin_session", token, httponly=True, max_age=ADMIN_SESSION_HOURS*3600)
+    return resp
+
+@app.post("/admin/verify-otp")
+async def admin_verify_otp(request: Request):
+    body = await request.json()
+    if _verify_otp(ADMIN_EMAIL, body.get("otp", "")):
+        token = _create_session()
+        resp  = JSONResponse({"ok": True})
+        resp.set_cookie("admin_session", token, httponly=True, max_age=ADMIN_SESSION_HOURS*3600)
+        return resp
+    return JSONResponse({"ok": False, "error": "Invalid or expired OTP."})
+
+@app.get("/admin/logout")
+def admin_logout():
+    from fastapi.responses import RedirectResponse
+    resp = RedirectResponse("/admin/login")
+    resp.delete_cookie("admin_session")
+    return resp
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(request: Request):
+    if not _check_session(request):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/admin/login")
+    return HTMLResponse(_open_tmpl("admin.html"))
+
+@app.get("/api/admin/stats")
+def api_admin_stats(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH); cur = conn.cursor()
+    stats = {
+        "total_snapshots":  cur.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0],
+        "total_stores":     cur.execute("SELECT COUNT(*) FROM stores WHERE enabled=1").fetchone()[0],
+        "total_requests":   cur.execute("SELECT COUNT(*) FROM store_requests").fetchone()[0],
+        "pending_requests": cur.execute("SELECT COUNT(*) FROM store_requests WHERE status='pending'").fetchone()[0],
+        "db_size_mb":       round(os.path.getsize(DB_PATH)/1024/1024, 2),
+        "snapshots_by_tier":{r[0]:r[1] for r in cur.execute("SELECT source_type,COUNT(*) FROM snapshots GROUP BY source_type").fetchall()},
+        "total_users":      cur.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+        "active_users":     cur.execute("SELECT COUNT(*) FROM users WHERE status='active'").fetchone()[0],
+        "total_revenue":    cur.execute("SELECT COALESCE(SUM(amount),0) FROM payments").fetchone()[0],
+        "overdue_invoices": cur.execute("SELECT COUNT(*) FROM invoices WHERE status='overdue'").fetchone()[0],
+    }
+    conn.close(); return JSONResponse(stats)
+
+@app.get("/api/admin/requests")
+def api_admin_requests(request: Request, status: str = ""):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    q = "SELECT * FROM store_requests" + (f" WHERE status='{status}'" if status else "") + " ORDER BY created_at DESC"
+    rows = [dict(r) for r in conn.execute(q).fetchall()]
+    conn.close(); return JSONResponse(rows)
+
+@app.post("/api/admin/requests/{req_id}/status")
+async def api_admin_update_request(req_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("UPDATE store_requests SET status=?, admin_notes=? WHERE id=?",
+                 (body.get("status","pending"), body.get("admin_notes",""), req_id))
+    conn.commit(); conn.close(); return JSONResponse({"ok": True})
+
+@app.get("/api/admin/pricing")
+def api_admin_pricing(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    rows = [dict(r) for r in conn.execute("SELECT * FROM pricing_config ORDER BY tier").fetchall()]
+    conn.close(); return JSONResponse(rows)
+
+@app.post("/api/admin/pricing")
+async def api_admin_update_pricing(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    for item in body:
+        conn.execute("UPDATE pricing_config SET price=?,description=? WHERE tier=?",
+                     (item["price"], item.get("description",""), item["tier"]))
+    conn.commit(); conn.close(); return JSONResponse({"ok": True})
+
+
+@app.get("/api/admin/plans")
+def api_admin_get_plans(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn  = db_connect(DB_PATH)
+    rows  = [dict(r) for r in conn.execute("SELECT * FROM plans ORDER BY price").fetchall()]
+    conn.close(); return JSONResponse(rows)
+
+
+@app.post("/api/admin/plans")
+async def api_admin_create_plan(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("""INSERT INTO plans(name,price,currency,store_limit,refresh_limit,tier_access,description)
+                    VALUES(?,?,?,?,?,?,?)""",
+                 (body["name"], body.get("price",0), body.get("currency","USD"),
+                  body.get("store_limit",3), body.get("refresh_limit",1),
+                  body.get("tier_access","local"), body.get("description","")))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.put("/api/admin/plans/{plan_id}")
+async def api_admin_update_plan(plan_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("""UPDATE plans SET name=?,price=?,currency=?,store_limit=?,refresh_limit=?,tier_access=?,description=?
+                    WHERE id=?""",
+                 (body["name"], body.get("price",0), body.get("currency","USD"),
+                  body.get("store_limit",3), body.get("refresh_limit",1),
+                  body.get("tier_access","local"), body.get("description",""), plan_id))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.post("/api/admin/plans/{plan_id}/status")
+async def api_admin_toggle_plan(plan_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("UPDATE plans SET is_active=? WHERE id=?", (body.get("is_active",1), plan_id))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+
+
+# ── User Auth Endpoints ───────────────────────────────────────────────────────
+
+@app.get("/api/geo")
+async def api_geo(request: Request):
+    import httpx as _httpx
+    ip = request.client.host
+    forwarded = request.headers.get("X-Forwarded-For","").split(",")[0].strip()
+    if forwarded: ip = forwarded
+    if ip in ("127.0.0.1","::1","localhost"):
+        return JSONResponse({"country_code":"LB","country":"Lebanon","timezone":"Asia/Beirut","vpn_suspected":False,"ip":ip,"confidence":"low"})
+    try:
+        r = _httpx.get(f"https://ipapi.co/{ip}/json/", timeout=5)
+        d = r.json()
+        return JSONResponse({"country_code":d.get("country_code","XX"),"country":d.get("country_name","Unknown"),
+            "timezone":d.get("timezone",""),"city":d.get("city",""),"org":d.get("org",""),
+            "vpn_suspected":"hosting" in d.get("org","").lower() or "vpn" in d.get("org","").lower(),
+            "ip":ip,"confidence":"high"})
+    except:
+        return JSONResponse({"country_code":"XX","country":"Unknown","timezone":"","vpn_suspected":False,"ip":ip,"confidence":"low"})
+
+@app.get("/api/modules")
+def api_get_modules():
+    conn = db_connect(DB_PATH)
+    rows = [dict(r) for r in conn.execute("SELECT * FROM modules WHERE is_active=1 ORDER BY id").fetchall()]
+    conn.close()
+    return JSONResponse(rows)
+
+@app.get("/api/country-plans/{country_code}/{module_slug}")
+def api_country_plans(country_code: str, module_slug: str):
+    conn = db_connect(DB_PATH)
+    rows = conn.execute("""SELECT p.*, cp.is_available, cp.trial_days, cp.trial_stores, cp.notes
+        FROM country_plans cp JOIN plans p ON cp.plan_id=p.id JOIN modules m ON cp.module_id=m.id
+        WHERE cp.country_code=? AND m.slug=? AND p.is_active=1 ORDER BY p.price""",
+        (country_code.upper(), module_slug)).fetchall()
+    if not rows:
+        rows = conn.execute("""SELECT p.*, cp.is_available, cp.trial_days, cp.trial_stores, cp.notes
+            FROM country_plans cp JOIN plans p ON cp.plan_id=p.id JOIN modules m ON cp.module_id=m.id
+            WHERE cp.country_code='XX' AND m.slug=? AND p.is_active=1 ORDER BY p.price""",
+            (module_slug,)).fetchall()
+    conn.close()
+    return JSONResponse([dict(r) for r in rows])
+
+@app.post("/api/register")
+async def api_register(request: Request):
+    import base64 as _b64, secrets as _sec
+    body = await request.json()
+    name=body.get("name","").strip(); email=body.get("email","").strip().lower()
+    password=body.get("password","").strip(); country=body.get("country_code","XX").upper()
+    plan_id=int(body.get("plan_id",1)); module_slug=body.get("module_slug","brickradar")
+    if not name or not email or not password:
+        return JSONResponse({"ok":False,"error":"Name, email and password required"})
+    if len(password)<8:
+        return JSONResponse({"ok":False,"error":"Password must be at least 8 characters"})
+    conn = db_connect(DB_PATH)
+    if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+        conn.close(); return JSONResponse({"ok":False,"error":"Email already registered"})
+    mod = conn.execute("SELECT id FROM modules WHERE slug=?", (module_slug,)).fetchone()
+    if not mod: conn.close(); return JSONResponse({"ok":False,"error":"Invalid module"})
+    module_id = mod[0]
+    salt = _b64.b64encode(os.urandom(16)).decode()
+    h = _hashlib.sha256((salt+password).encode()).hexdigest()
+    verify_token = _sec.token_hex(32)
+    conn.execute("""INSERT INTO users(name,email,password_hash,password_salt,plan_id,country_code,
+                    email_verified,verify_token,registration_type) VALUES(?,?,?,?,?,?,0,?,'self')""",
+                 (name,email,h,salt,plan_id,country,verify_token))
+    uid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    cp = conn.execute("SELECT trial_days FROM country_plans WHERE country_code=? AND plan_id=? AND module_id=?",
+                      (country,plan_id,module_id)).fetchone()
+    trial_ends = None
+    if cp and cp[0]:
+        from datetime import timedelta as _tdd
+        trial_ends = (_dt.utcnow() + _tdd(days=cp[0])).isoformat()
+    conn.execute("INSERT INTO subscriptions(user_id,plan_id) VALUES(?,?)", (uid,plan_id))
+    conn.execute("INSERT INTO user_modules(user_id,module_id,plan_id,trial_ends,setup_done) VALUES(?,?,?,?,0)",
+                 (uid,module_id,plan_id,trial_ends))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True,"user_id":uid})
+
+@app.post("/api/user/login")
+async def api_user_login(request: Request):
+    import secrets as _sec
+    body = await request.json()
+    email=body.get("email","").strip().lower(); password=body.get("password","").strip()
+    conn = db_connect(DB_PATH)
+    user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    conn.close()
+    if not user: return JSONResponse({"ok":False,"error":"Invalid email or password"})
+    h = _hashlib.sha256((user["password_salt"]+password).encode()).hexdigest()
+    if h != user["password_hash"]: return JSONResponse({"ok":False,"error":"Invalid email or password"})
+    if user["status"]=="suspended": return JSONResponse({"ok":False,"error":"Account suspended. Contact support."})
+    token = _sec.token_hex(32)
+    expires = _dt.utcnow() + _td(hours=24)
+    _admin_sessions[f"user_{token}"] = {"user_id":user["id"],"expires":expires,"type":"user"}
+    resp = JSONResponse({"ok":True,"user_id":user["id"],"setup_done":user["setup_done"],"name":user["name"]})
+    resp.set_cookie("user_session", token, httponly=True, max_age=86400)
+    return resp
+
+@app.get("/api/user/me")
+def api_user_me(request: Request):
+    token = request.cookies.get("user_session")
+    if not token or f"user_{token}" not in _admin_sessions:
+        return JSONResponse({"error":"Not logged in"}, status_code=401)
+    sess = _admin_sessions[f"user_{token}"]
+    if _dt.utcnow() > sess["expires"]: return JSONResponse({"error":"Session expired"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    user = conn.execute("""SELECT u.*, p.name as plan_name, p.price as plan_price, p.features
+        FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?""",
+        (sess["user_id"],)).fetchone()
+    conn.close()
+    if not user: return JSONResponse({"error":"User not found"}, status_code=404)
+    d = dict(user)
+    d.pop("password_hash",""); d.pop("password_salt",""); d.pop("verify_token","")
+    return JSONResponse(d)
+
+@app.get("/login", response_class=HTMLResponse)
+def user_login_page():
+    return HTMLResponse(_open_tmpl("login.html"))
+
+@app.get("/register", response_class=HTMLResponse)
+def user_register_page():
+    return HTMLResponse(_open_tmpl("register.html"))
+
+@app.get("/account", response_class=HTMLResponse)
+def user_account_page():
+    return HTMLResponse(_open_tmpl("account.html"))
+
+@app.get("/setup", response_class=HTMLResponse)
+def user_setup_page():
+    return HTMLResponse(_open_tmpl("setup.html"))
+
+
+@app.get("/api/user/available-stores")
+def api_user_available_stores(request: Request):
+    """Return stores available to the current user based on plan and country."""
+    token = request.cookies.get("user_session")
+    if not token or f"user_{token}" not in _admin_sessions:
+        return JSONResponse([], status_code=401)
+    sess = _admin_sessions[f"user_{token}"]
+    conn = db_connect(DB_PATH)
+    user = conn.execute("SELECT * FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?",
+                        (sess["user_id"],)).fetchone()
+    if not user: conn.close(); return JSONResponse([])
+
+    import json as _json
+    features = {}
+    try: features = _json.loads(user["features"] or "{}")
+    except: pass
+
+    # Build tier filter based on plan features
+    tiers = ["local"]
+    if features.get("official"):       tiers.append("official")
+    if features.get("international"):  tiers.append("international")
+
+    placeholders = ",".join("?"*len(tiers))
+    stores = [dict(r) for r in conn.execute(
+        f"SELECT * FROM stores WHERE enabled=1 AND source_type IN ({placeholders}) ORDER BY source_type, name",
+        tiers).fetchall()]
+    conn.close()
+    return JSONResponse(stores)
+
+@app.post("/api/user/setup")
+async def api_user_setup(request: Request):
+    """Save user store selection and mark setup as done."""
+    token = request.cookies.get("user_session")
+    if not token or f"user_{token}" not in _admin_sessions:
+        return JSONResponse({"ok":False,"error":"Not logged in"}, status_code=401)
+    sess  = _admin_sessions[f"user_{token}"]
+    body  = await request.json()
+    store_ids = body.get("store_ids", [])
+    user_id   = sess["user_id"]
+    conn = db_connect(DB_PATH)
+
+    # Get user plan store limit
+    user = conn.execute("SELECT u.plan_id, p.store_limit FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?",
+                        (user_id,)).fetchone()
+    limit = user["store_limit"] if user else 3
+    if limit != -1 and len(store_ids) > limit:
+        conn.close()
+        return JSONResponse({"ok":False,"error":f"Plan allows max {limit} stores"})
+
+    # Get module id
+    mod = conn.execute("SELECT module_id FROM user_modules WHERE user_id=? LIMIT 1", (user_id,)).fetchone()
+    module_id = mod["module_id"] if mod else 1
+
+    # Save store selections
+    conn.execute("DELETE FROM user_stores WHERE user_id=? AND module_id=?", (user_id, module_id))
+    for sid in store_ids:
+        store = conn.execute("SELECT source_type FROM stores WHERE id=?", (sid,)).fetchone()
+        tier = store["source_type"] if store else "local"
+        conn.execute("INSERT INTO user_stores(user_id,module_id,store_id,tier) VALUES(?,?,?,?)",
+                     (user_id, module_id, sid, tier))
+
+    # Mark setup done
+    conn.execute("UPDATE users SET setup_done=1 WHERE id=?", (user_id,))
+    conn.execute("UPDATE user_modules SET setup_done=1 WHERE user_id=?", (user_id,))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.get("/api/user/features")
+def api_user_features(request: Request):
+    """Return current user plan features for frontend gating."""
+    import json as _json
+    ctx = _get_user_features(request)
+    if not ctx:
+        # No session - return guest/admin features (full access for now)
+        return JSONResponse({
+            "logged_in": False,
+            "name": "Guest",
+            "plan_name": "Admin",
+            "features": {
+                "dashboard":True,"stores":True,"official":True,
+                "international":True,"analytics":True,"advanced":True,
+                "radarlist":True,"store_requests":True,"orders":True
+            }
+        })
+    ctx["logged_in"] = True
+    return JSONResponse(ctx)
+
+@app.get("/api/user/logout")
+def api_user_logout(request: Request):
+    token = request.cookies.get("user_session")
+    if token and f"user_{token}" in _admin_sessions:
+        del _admin_sessions[f"user_{token}"]
+    from fastapi.responses import RedirectResponse
+    resp = RedirectResponse("/login")
+    resp.delete_cookie("user_session")
+    return resp
+
+
+# ── Admin Users/Invoices/Payments API ────────────────────────────────────────
+
+@app.get("/api/admin/users")
+def api_admin_users(request: Request, status: str = "", plan_id: str = ""):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    q = """SELECT u.*, p.name as plan_name, p.price as plan_price,
+                  (SELECT COUNT(*) FROM invoices WHERE user_id=u.id) as invoice_count,
+                  (SELECT COUNT(*) FROM invoices WHERE user_id=u.id AND status='overdue') as overdue_count,
+                  (SELECT COALESCE(SUM(amount),0) FROM payments WHERE user_id=u.id) as total_paid
+           FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE 1=1"""
+    if status:  q += f" AND u.status='{status}'"
+    if plan_id: q += f" AND u.plan_id={plan_id}"
+    q += " ORDER BY u.created_at DESC"
+    rows = [dict(r) for r in conn.execute(q).fetchall()]
+    conn.close()
+    return JSONResponse(rows)
+
+@app.post("/api/admin/users")
+async def api_admin_add_user(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    import base64 as _b64
+    body    = await request.json()
+    email   = body.get("email","").strip().lower()
+    name    = body.get("name","").strip()
+    pwd     = body.get("password","").strip()
+    plan_id = int(body.get("plan_id", 1))
+    if not email or not name:
+        return JSONResponse({"ok":False,"error":"Name and email required"})
+    salt = _b64.b64encode(os.urandom(16)).decode()
+    h    = _hashlib.sha256((salt+pwd).encode()).hexdigest() if pwd else ""
+    conn = db_connect(DB_PATH)
+    try:
+        conn.execute("INSERT INTO users(name,email,password_hash,password_salt,plan_id) VALUES(?,?,?,?,?)",
+                     (name, email, h, salt, plan_id))
+        uid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute("INSERT INTO subscriptions(user_id,plan_id) VALUES(?,?)", (uid, plan_id))
+        conn.commit(); conn.close()
+        return JSONResponse({"ok":True,"id":uid})
+    except Exception as e:
+        conn.close()
+        return JSONResponse({"ok":False,"error":str(e)})
+
+@app.post("/api/admin/users/{user_id}/plan")
+async def api_admin_change_plan(user_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    plan_id = int(body.get("plan_id", 1))
+    conn = db_connect(DB_PATH)
+    old_plan = conn.execute("SELECT plan_id FROM users WHERE id=?", (user_id,)).fetchone()
+    conn.execute("UPDATE users SET plan_id=? WHERE id=?", (plan_id, user_id))
+    conn.execute("UPDATE subscriptions SET status='cancelled',end_date=datetime('now') WHERE user_id=? AND status='active'", (user_id,))
+    conn.execute("INSERT INTO subscriptions(user_id,plan_id,previous_plan) VALUES(?,?,?)",
+                 (user_id, plan_id, old_plan[0] if old_plan else None))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.post("/api/admin/users/{user_id}/status")
+async def api_admin_update_user_status(user_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("UPDATE users SET status=? WHERE id=?", (body.get("status","active"), user_id))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.delete("/api/admin/users/{user_id}")
+def api_admin_delete_user(user_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+@app.get("/api/admin/invoices")
+def api_admin_invoices(request: Request, user_id: str = "", status: str = ""):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    q = """SELECT i.*, u.name as user_name, u.email as user_email
+           FROM invoices i LEFT JOIN users u ON i.user_id=u.id WHERE 1=1"""
+    if user_id: q += f" AND i.user_id={user_id}"
+    if status:  q += f" AND i.status='{status}'"
+    q += " ORDER BY i.created_at DESC"
+    rows = [dict(r) for r in conn.execute(q).fetchall()]
+    conn.close()
+    return JSONResponse(rows)
+
+@app.post("/api/admin/invoices")
+async def api_admin_create_invoice(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    count = conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0] + 1
+    inv_num = f"INV-{_dt.utcnow().strftime('%Y%m')}-{count:04d}"
+    conn.execute("""INSERT INTO invoices(invoice_number,user_id,amount,currency,status,due_date,items,notes)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                 (inv_num, body.get("user_id"), body.get("amount"),
+                  body.get("currency","USD"), body.get("status","draft"),
+                  body.get("due_date"), body.get("items","{}"), body.get("notes","")))
+    conn.commit()
+    inv_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return JSONResponse({"ok":True,"id":inv_id,"invoice_number":inv_num})
+
+@app.post("/api/admin/invoices/{inv_id}/status")
+async def api_admin_update_invoice(inv_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body   = await request.json()
+    status = body.get("status","draft")
+    extra  = ", paid_at=datetime('now')" if status=="paid" else ", sent_at=datetime('now')" if status=="sent" else ""
+    conn = db_connect(DB_PATH)
+    conn.execute(f"UPDATE invoices SET status=?{extra} WHERE id=?", (status, inv_id))
+    conn.commit()
+
+    # Send email when invoice is marked as sent
+    if status == "sent" and GMAIL_APP_PASSWORD:
+        try:
+            inv = conn.execute("""SELECT i.*, u.name as user_name, u.email as user_email
+                                  FROM invoices i LEFT JOIN users u ON i.user_id=u.id
+                                  WHERE i.id=?""", (inv_id,)).fetchone()
+            if inv and inv["user_email"]:
+                import smtplib, ssl
+                from email.mime.multipart import MIMEMultipart
+                from email.mime.text import MIMEText
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"Invoice {inv['invoice_number']} — RadarOS"
+                msg["From"]    = ADMIN_EMAIL
+                msg["To"]      = inv["user_email"]
+                html = f"""
+                <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:2rem;border-radius:12px;">
+                  <img src="https://khwarizme.com/assets/radaros_logo.svg" style="height:32px;margin-bottom:1rem;">
+                  <h2 style="color:#e2e8f0;margin-bottom:0.5rem;">Invoice {inv['invoice_number']}</h2>
+                  <p style="color:#94a3b8;font-size:0.9rem;">Dear {inv['user_name']},</p>
+                  <p style="color:#94a3b8;font-size:0.9rem;">Please find your invoice details below.</p>
+                  <div style="background:#020817;border:1px solid #1e293b;border-radius:8px;padding:1.5rem;margin:1.5rem 0;">
+                    <table style="width:100%;font-size:0.9rem;border-collapse:collapse;">
+                      <tr><td style="color:#64748b;padding:6px 0;">Invoice Number</td><td style="color:#a5b4fc;text-align:right;">{inv['invoice_number']}</td></tr>
+                      <tr><td style="color:#64748b;padding:6px 0;">Amount Due</td><td style="color:#fcd34d;font-size:1.1rem;font-weight:700;text-align:right;">${inv['amount']:.2f} {inv['currency']}</td></tr>
+                      <tr><td style="color:#64748b;padding:6px 0;">Due Date</td><td style="color:#e2e8f0;text-align:right;">{inv['due_date'] or 'On receipt'}</td></tr>
+                      {f"<tr><td style='color:#64748b;padding:6px 0;'>Notes</td><td style='color:#94a3b8;text-align:right;'>{inv['notes']}</td></tr>" if inv['notes'] else ""}
+                    </table>
+                  </div>
+                  <p style="color:#94a3b8;font-size:0.85rem;">To pay, please transfer to our bank account and reference invoice number <strong style="color:#e2e8f0;">{inv['invoice_number']}</strong>.</p>
+                  <p style="color:#64748b;font-size:0.8rem;margin-top:2rem;">RadarOS · Market Intelligence Platform · <a href="https://khwarizme.com" style="color:#6366f1;">khwarizme.com</a></p>
+                </div>"""
+                msg.attach(MIMEText(html, "html"))
+                ctx = ssl.create_default_context()
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx) as s:
+                    s.login(ADMIN_EMAIL, GMAIL_APP_PASSWORD)
+                    s.sendmail(ADMIN_EMAIL, inv["user_email"], msg.as_string())
+                print(f"[Invoice] Email sent to {inv['user_email']}")
+        except Exception as e:
+            print(f"[Invoice] Email error: {e}")
+
+    conn.close()
+    return JSONResponse({"ok":True})
+
+@app.get("/api/admin/payments")
+def api_admin_payments(request: Request, user_id: str = ""):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    q = """SELECT p.*, u.name as user_name, u.email as user_email, i.invoice_number
+           FROM payments p LEFT JOIN users u ON p.user_id=u.id
+           LEFT JOIN invoices i ON p.invoice_id=i.id WHERE 1=1"""
+    if user_id: q += f" AND p.user_id={user_id}"
+    q += " ORDER BY p.created_at DESC"
+    rows = [dict(r) for r in conn.execute(q).fetchall()]
+    conn.close()
+    return JSONResponse(rows)
+
+@app.post("/api/admin/payments")
+async def api_admin_add_payment(request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body = await request.json()
+    conn = db_connect(DB_PATH)
+    conn.execute("""INSERT INTO payments(invoice_id,user_id,amount,currency,method,reference,notes)
+                    VALUES(?,?,?,?,?,?,?)""",
+                 (body.get("invoice_id"), body.get("user_id"), body.get("amount"),
+                  body.get("currency","USD"), body.get("method","bank_transfer"),
+                  body.get("reference",""), body.get("notes","")))
+    if body.get("invoice_id"):
+        conn.execute("UPDATE invoices SET status='paid',paid_at=datetime('now') WHERE id=?",
+                     (body.get("invoice_id"),))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True})
+
+
+@app.get("/api/admin/user/{user_id}/summary")
+def api_admin_user_summary_v2(user_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    user     = dict(conn.execute("SELECT u.*,p.name as plan_name,p.price as plan_price FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?", (user_id,)).fetchone() or {})
+    invoices = [dict(r) for r in conn.execute("SELECT * FROM invoices WHERE user_id=? ORDER BY created_at DESC", (user_id,)).fetchall()]
+    payments = [dict(r) for r in conn.execute("SELECT * FROM payments WHERE user_id=? ORDER BY created_at DESC", (user_id,)).fetchall()]
+    total_billed = sum(i["amount"] or 0 for i in invoices if i["status"] != "cancelled")
+    total_paid   = sum(p["amount"] or 0 for p in payments)
+    conn.close()
+    return JSONResponse({"user":user,"invoices":invoices,"payments":payments,
+                         "total_billed":total_billed,"total_paid":total_paid,"balance":total_billed-total_paid})
+
+@app.post("/api/admin/users/{user_id}/request-plan-change")
+async def api_admin_request_plan_change(user_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    body    = await request.json()
+    plan_id = int(body.get("plan_id"))
+    conn    = db_connect(DB_PATH)
+    user     = conn.execute("SELECT u.*,p.name as plan_name FROM users u LEFT JOIN plans p ON u.plan_id=p.id WHERE u.id=?", (user_id,)).fetchone()
+    new_plan = conn.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
+    if not user or not new_plan:
+        conn.close()
+        return JSONResponse({"ok":False,"error":"User or plan not found"})
+    count   = conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0] + 1
+    inv_num = f"INV-{_dt.utcnow().strftime('%Y%m')}-{count:04d}"
+    due     = (_dt.utcnow() + _td(days=14)).strftime('%Y-%m-%d')
+    notes   = f"Plan change: {user['plan_name']} → {new_plan['name']}"
+    conn.execute("""INSERT INTO invoices(invoice_number,user_id,amount,currency,status,due_date,items,notes)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                 (inv_num, user_id, new_plan["price"], new_plan["currency"] or "USD", "draft", due, "{}", notes))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True,"invoice_number":inv_num})
+
+
+@app.post("/api/admin/invoices/{inv_id}/return")
+async def api_admin_return_invoice(inv_id: int, request: Request):
+    if not _check_session(request): return JSONResponse({"error":"Unauthorized"}, status_code=401)
+    conn = db_connect(DB_PATH)
+    inv = conn.execute("SELECT * FROM invoices WHERE id=?", (inv_id,)).fetchone()
+    if not inv:
+        conn.close()
+        return JSONResponse({"ok":False,"error":"Invoice not found"})
+    # Create credit note
+    count   = conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0] + 1
+    cr_num  = f"CR-{_dt.utcnow().strftime('%Y%m')}-{count:04d}"
+    due     = _dt.utcnow().strftime('%Y-%m-%d')
+    conn.execute("""INSERT INTO invoices(invoice_number,user_id,amount,currency,status,due_date,items,notes)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                 (cr_num, inv["user_id"], -abs(inv["amount"] or 0),
+                  inv["currency"] or "USD", "paid", due, "{}",
+                  f"Credit note for {inv['invoice_number']}"))
+    # Mark original as cancelled
+    conn.execute("UPDATE invoices SET status='cancelled' WHERE id=?", (inv_id,))
+    conn.commit(); conn.close()
+    return JSONResponse({"ok":True,"credit_note":cr_num})
 
 @app.get("/radarlist", response_class=HTMLResponse)
 def radarlist_page():
@@ -1392,9 +2662,32 @@ def export_pdf_page(request: Request):
 async def api_discover_stores(request: Request):
     if not ANTHROPIC_API_KEY and not GROQ_API_KEY:
         return JSONResponse({"ok": False, "error": "No AI API key configured."}, status_code=500)
-    body   = await request.json()
-    region = body.get("region", "Lebanon").strip()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    region  = (body.get("region") or "Lebanon").strip()
+    tier    = (body.get("tier")   or "local").strip()
+    country = (body.get("country") or "").strip()
+
+    # Build list of already-tracked store domains from DB
+    conn = db_connect(DB_PATH)
+    cur  = conn.cursor()
+    cur.execute("SELECT base_url FROM stores WHERE enabled=1")
+    tracked = []
+    for row in cur.fetchall():
+        try:
+            import urllib.parse as _up
+            domain = _up.urlparse(row["base_url"]).netloc.replace("www.", "")
+            if domain:
+                tracked.append(domain)
+        except: pass
+    conn.close()
+
     return StreamingResponse(
-        stream_discover_stores(region, list(HARDCODED_STORE_URLS.keys()), ANTHROPIC_API_KEY, GROQ_API_KEY),
+        stream_discover_stores(
+            region, tracked, ANTHROPIC_API_KEY, GROQ_API_KEY,
+            tier=tier, country=country
+        ),
         media_type="text/event-stream",
     )

@@ -172,5 +172,39 @@ async function removeFromRadar(itemNumber, btn) {
 loadRadarList();
 </script>
   <script src="/static/ai_assistant.js"></script>
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    if (ctx.logged_in) {
+      const a = document.getElementById('userNavArea');
+      if (a) {
+        a.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+    }
+    const f = ctx.features || {};
+    const gates = [
+      {href:'/official',key:'official'},{href:'/international',key:'international'},
+      {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      {href:'/analytics/official',key:'analytics'},{href:'/analytics/international',key:'analytics'},
+    ];
+    document.querySelectorAll('a[href]').forEach(a => {
+      const gate = gates.find(g=>a.getAttribute('href')===g.href);
+      if (!gate||f[gate.key]) return;
+      a.style.opacity='0.35'; a.style.cursor='not-allowed';
+      a.addEventListener('click',e=>{
+        e.preventDefault();
+        if(confirm('This feature requires a higher plan.\nGo to your account to upgrade?'))
+          window.location.href='/account';
+      });
+    });
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
 </body>
 </html>

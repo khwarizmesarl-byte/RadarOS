@@ -18,6 +18,32 @@
   <script src="/static/theme.js"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen" style="padding:1.5rem">
+<div style="padding:0 1.25rem;"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.6rem 0;margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a href="/" style="text-decoration:none;display:flex;align-items:center;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:36px;width:auto;display:block;">
+  </a>
+    <span style="color:#1e293b;font-size:0.8rem;margin-left:0.5rem;">|</span>
+    <span style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-left:0.3rem;">🏪 Stores</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+    <a href="/" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Dashboard</a>
+    <a href="/stores" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+    <a href="/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+    <a href="/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+    <a href="/analytics" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a><a href="/analytics/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">📊 Brand</a><a href="/analytics/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">Intl</a>
+    <a href="/advanced" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+    <a href="/radarlist" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">RadarList</a>
+    <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">About</a>
+    <div id="userNavArea" style="display:none;align-items:center;gap:0.4rem;margin-left:0.5rem;">
+        <span id="userNavName" style="font-size:0.7rem;color:#a5b4fc;font-weight:600;"></span>
+        <span id="userNavPlan" style="font-size:0.62rem;padding:1px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;"></span>
+        <a href="/account" style="font-size:0.7rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;">Account</a>
+        <a href="/api/user/logout" style="font-size:0.7rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;">Logout</a>
+      </div>
+  </div>
+</div></div>
+
 
 <!-- Header -->
 <div class="flex items-center justify-between mb-8">
@@ -31,7 +57,7 @@
   </div>
   <div class="flex items-center gap-2">
 <div id="themeSwitcher" style="display:flex;align-items:center;gap:4px;margin-left:auto;"></div>
-    <button onclick="openSettings()" style="background:#2d2a40;border:1px solid #4c4870;border-radius:8px;padding:0.4rem 0.9rem;color:#c4b5fd;font-size:0.82rem;cursor:pointer;">⚙️ Settings</button>
+    <button onclick="openSettings()" id="settingsBtn" style="background:#2d2a40;border:1px solid #4c4870;border-radius:8px;padding:0.4rem 0.9rem;color:#c4b5fd;font-size:0.82rem;cursor:pointer;">⚙️ Settings</button>
     <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 gap-1">
       <button id="btnGrid" onclick="setView('grid')" title="Grid view"
         class="p-1.5 rounded text-slate-300 bg-slate-700">
@@ -59,13 +85,63 @@
 
 
 
+<!-- ── Tier Tabs + Refresh ── -->
+<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+  <div class="flex gap-2 flex-wrap">
+    <button onclick="setTier('local')" id="tabLocal"
+      class="tier-tab px-4 py-2 rounded-lg border font-semibold text-sm transition-all"
+      style="background:rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.4);color:#a5b4fc;">
+      🏪 Local
+    </button>
+    <button onclick="setTier('official')" id="tabOfficial"
+      class="tier-tab px-4 py-2 rounded-lg border font-semibold text-sm transition-all"
+      style="background:rgba(30,41,59,0.5);border-color:#334155;color:#64748b;">
+      🏭 Official Brands
+    </button>
+    <button onclick="setTier('international')" id="tabIntl"
+      class="tier-tab px-4 py-2 rounded-lg border font-semibold text-sm transition-all"
+      style="background:rgba(30,41,59,0.5);border-color:#334155;color:#64748b;">
+      🌍 International
+    </button>
+  </div>
+
+  <!-- Sub-filters for International -->
+  <div id="intlFilters" style="display:none;" class="flex gap-2 flex-wrap items-center">
+    <select id="subTierFilter" onchange="loadStores()"
+      class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm">
+      <option value="all">All Tiers</option>
+      <option value="global">🌍 Global</option>
+      <option value="regional">📍 Regional</option>
+    </select>
+    <select id="countryFilter" onchange="loadStores()"
+      class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm">
+      <option value="all">All Countries</option>
+      <option value="AE">🇦🇪 UAE</option>
+      <option value="SA">🇸🇦 KSA</option>
+      <option value="KW">🇰🇼 Kuwait</option>
+      <option value="TR">🇹🇷 Turkey</option>
+      <option value="DE">🇩🇪 Germany</option>
+      <option value="GB">🇬🇧 UK</option>
+      <option value="CN">🇨🇳 China</option>
+      <option value="US">🌍 Global/US</option>
+    </select>
+  </div>
+
+  <!-- Refresh button per tier -->
+  <button id="refreshBtn" onclick="refreshTier()"
+    class="px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2"
+    style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399;">
+    ↺ Refresh <span id="refreshTierLabel">Local</span>
+  </button>
+</div>
+
 <!-- Stores Grid/List -->
 <div id="storesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
   <div class="text-slate-500 text-sm">Loading stores...</div>
 </div>
 
 <!-- ── DB Tools ─────────────────────────────────────────────────── -->
-<div class="mt-10 mb-8">
+<div class="mt-10 mb-8" id="dbToolsSection">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-bold text-slate-100">🛠️ Database Tools</h2>
     <span class="text-xs text-slate-500 bg-slate-800 border border-slate-700 rounded px-2 py-0.5">Advanced</span>
@@ -146,54 +222,187 @@
       <button onclick="closeWizard()" class="text-slate-400 hover:text-white text-xl">✕</button>
     </div>
 
-    <!-- Step 1: Enter URL -->
+    <!-- Step 1: Enter URL / Mode selector -->
     <div id="step1" class="step active p-5">
-      <h3 class="font-semibold mb-1">Enter Store URL</h3>
-      <p class="text-slate-400 text-sm mb-4">We'll automatically detect the platform and test if it's scrapable.</p>
+
+      <!-- Mode toggle -->
+      <div class="flex gap-2 mb-4">
+        <button id="modeAutoBtn" onclick="setMode('auto')"
+          class="flex-1 py-2 rounded-lg border text-sm font-semibold transition-all"
+          style="background:rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.4);color:#a5b4fc;">
+          🔍 Auto-detect
+        </button>
+        <button id="modeManualBtn" onclick="setMode('manual')"
+          class="flex-1 py-2 rounded-lg border text-sm font-semibold transition-all"
+          style="background:rgba(30,41,59,0.5);border-color:#334155;color:#64748b;">
+          ✎ Manual
+        </button>
+      </div>
+
       <input id="storeUrl" type="text" placeholder="https://example.com"
         class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
-        onkeydown="if(event.key==='Enter') testStore()">
-      <div class="mt-3">
+        onkeydown="if(event.key==='Enter' && wizardMode==='auto') testStore()">
+
+      <!-- Auto-detect only: collection slug -->
+      <div id="autoOnlyFields" class="mt-3">
         <label class="text-xs text-slate-400 block mb-1">
-          Limit to collection <span class="text-slate-500">(optional — e.g. <code>lego</code> for stores with mixed products)</span>
+          Limit to collection <span class="text-slate-500">(optional — e.g. <code>lego</code>)</span>
         </label>
         <input id="testCollectionSlug" type="text" placeholder="lego"
           class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
           onkeydown="if(event.key==='Enter') testStore()">
       </div>
+
+      <!-- Manual only: platform + name -->
+      <div id="manualOnlyFields" class="mt-3 space-y-2" style="display:none;">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Platform *</label>
+          <select id="manualPlatform" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+            <option value="shopify">Shopify</option>
+            <option value="woocommerce">WooCommerce</option>
+            <option value="bigcommerce">BigCommerce</option>
+            <option value="magento">Magento</option>
+            <option value="html">HTML / Custom</option>
+            <option value="amazon">Amazon</option>
+            <option value="aliexpress">AliExpress</option>
+            <option value="bricklink">Bricklink</option>
+            <option value="ebay">eBay</option>
+            <option value="noon">Noon</option>
+            <option value="taobao">Taobao</option>
+            <option value="1688">1688</option>
+            <option value="lego_com">LEGO.com</option>
+            <option value="other">Other / API</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Store Name *</label>
+          <input id="manualStoreName" type="text" placeholder="e.g. Reobrix Official"
+            class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Collection / Category slug <span class="text-slate-500">(optional)</span></label>
+          <input id="manualSlug" type="text" placeholder="e.g. lego, building-sets"
+            class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+        </div>
+      </div>
+      <!-- Tier Classification -->
+      <div style="border-top:1px solid #1e293b;padding-top:0.75rem;margin-top:0.75rem;">
+        <div class="text-xs text-slate-500 uppercase tracking-widest mb-2">Store Classification</div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Tier</label>
+            <select id="storeSourceType" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm" onchange="onTierChange()">
+              <option value="local">🏪 Local</option>
+              <option value="official">🏭 Official Brand</option>
+              <option value="international">🌍 International</option>
+            </select>
+          </div>
+          <div id="subTierRow">
+            <label class="text-xs text-slate-400 block mb-1">Sub-tier</label>
+            <select id="storeSubTier" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+              <option value="global">🌍 Global</option>
+              <option value="regional">📍 Regional</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Country</label>
+            <select id="storeCountry" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+              <option value="LB">🇱🇧 Lebanon</option>
+              <option value="AE">🇦🇪 UAE</option>
+              <option value="SA">🇸🇦 KSA</option>
+              <option value="KW">🇰🇼 Kuwait</option>
+              <option value="TR">🇹🇷 Turkey</option>
+              <option value="DE">🇩🇪 Germany</option>
+              <option value="GB">🇬🇧 UK</option>
+              <option value="CN">🇨🇳 China</option>
+              <option value="US">🌍 US / Global</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Currency</label>
+            <select id="storeCurrency" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+              <option value="USD">USD $</option>
+              <option value="AED">AED د.إ</option>
+              <option value="SAR">SAR ر.س</option>
+              <option value="KWD">KWD د.ك</option>
+              <option value="EUR">EUR €</option>
+              <option value="GBP">GBP £</option>
+              <option value="TRY">TRY ₺</option>
+              <option value="CNY">CNY ¥</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div id="step1Error" class="text-rose-400 text-xs mt-2 hidden"></div>
-      <div class="flex justify-end mt-4">
-        <button onclick="testStore()"
-          class="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 font-semibold text-sm">
-          Test Store →
-        </button>
+      <div class="flex justify-between mt-4">
+        <div></div>
+        <div class="flex gap-2">
+          <button id="step1AutoBtn" onclick="testStore()"
+            class="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 font-semibold text-sm">
+            Test Store →
+          </button>
+          <button id="step1ManualBtn" onclick="manualSkipToConfig()" style="display:none;"
+            class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm">
+            Configure →
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Step 2: Test Results -->
     <div id="step2" class="step p-5">
+      <!-- Loading -->
       <div id="testLoading" class="text-center py-8">
         <div class="spinner text-2xl mb-3">⟳</div>
-        <div class="text-slate-400 text-sm">Testing store...</div>
+        <div class="text-slate-400 text-sm" id="testLoadingMsg">Diagnosing store...</div>
       </div>
+
+      <!-- ✅ Free / Scrapable -->
       <div id="testResults" class="hidden fade-in">
-        <div class="flex items-center gap-2 mb-4">
-          <span class="text-emerald-400 text-lg">✓</span>
-          <div>
-            <div class="font-semibold" id="detectedPlatform"></div>
-            <div class="text-slate-400 text-xs" id="detectedCount"></div>
+        <div class="flex items-center gap-2 mb-3">
+          <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:0.3rem 0.7rem;font-size:0.72rem;font-weight:700;color:#34d399;">✓ FREE — Ready to add</span>
+          <span id="detectedPlatform" style="font-size:0.72rem;color:#64748b;"></span>
+        </div>
+        <div class="text-slate-400 text-xs mb-2" id="detectedCount"></div>
+        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Sample Products</div>
+        <div id="sampleProducts" class="space-y-2 mb-3 max-h-44 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- 🔒 Blocked — Tier 2/3/4 -->
+      <div id="testBlocked" class="hidden fade-in">
+        <div id="tierBadge" class="mb-3"></div>
+        <div id="diagnosisText" style="font-size:0.78rem;color:#94a3b8;line-height:1.6;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:0.65rem 0.85rem;margin-bottom:0.75rem;"></div>
+
+        <!-- Request form for Tier 2/3 -->
+        <div id="requestForm" class="hidden">
+          <div style="font-size:0.7rem;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Submit a Request</div>
+          <div class="space-y-2">
+            <input id="reqName" type="text" placeholder="Your name"
+              class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+            <input id="reqEmail" type="email" placeholder="Your email"
+              class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+            <textarea id="reqNotes" rows="2" placeholder="Any notes (optional)"
+              class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none"></textarea>
+            <button onclick="submitStoreRequest()"
+              style="width:100%;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;border-radius:8px;padding:0.5rem;font-size:0.82rem;font-weight:600;cursor:pointer;">
+              📬 Submit Request
+            </button>
+            <div id="reqSuccess" class="hidden text-center text-emerald-400 text-xs py-1">✓ Request submitted! We will be in touch.</div>
           </div>
         </div>
-        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Sample Products</div>
-        <div id="sampleProducts" class="space-y-2 mb-4 max-h-52 overflow-y-auto pr-1"></div>
       </div>
+
+      <!-- ❌ Unreachable -->
       <div id="testError" class="hidden">
         <div class="flex items-center gap-2 text-rose-400 mb-3">
-          <span>✕</span>
-          <span class="font-semibold">Could not scrape this store</span>
+          <span>✕</span><span class="font-semibold">Could not reach this store</span>
         </div>
         <div id="testErrorMsg" class="text-slate-400 text-sm bg-slate-900 rounded-lg p-3"></div>
       </div>
+
       <!-- AI Analysis Panel -->
       <div id="aiAnalysisPanel" class="hidden mt-3">
         <div style="border-top:1px solid rgba(99,102,241,0.2);padding-top:0.75rem;margin-top:0.5rem;">
@@ -287,17 +496,85 @@ function setView(v) {
 }
 
 // ── Load stores ──
+let currentTier = 'local';
+
+function setTier(tier) {
+  if (window._userCtx && window._userCtx.logged_in) {
+    const f = window._userCtx.features || {};
+    if (tier === 'official' && !f.official) {
+      alert('Official Brands require Starter plan or higher.');
+      return;
+    }
+    if (tier === 'international' && !f.international) {
+      alert('International Stores require Pro plan or higher.');
+      return;
+    }
+  }
+  currentTier = tier;
+  // Update tab styles
+  document.querySelectorAll('.tier-tab').forEach(t => {
+    t.style.background = 'rgba(30,41,59,0.5)';
+    t.style.borderColor = '#334155';
+    t.style.color = '#64748b';
+  });
+  const colors = {
+    local:         ['rgba(99,102,241,0.15)',  'rgba(99,102,241,0.4)',  '#a5b4fc'],
+    official:      ['rgba(217,119,6,0.15)',   'rgba(217,119,6,0.4)',   '#fcd34d'],
+    international: ['rgba(5,150,105,0.15)',   'rgba(5,150,105,0.4)',   '#34d399'],
+  };
+  const [bg, bc, col] = colors[tier] || colors.local;
+  const tabMap = {local: 'tabLocal', official: 'tabOfficial', international: 'tabIntl'};
+  const tab = document.getElementById(tabMap[tier]);
+  if (tab) { tab.style.background = bg; tab.style.borderColor = bc; tab.style.color = col; }
+
+  // Show/hide intl filters
+  document.getElementById('intlFilters').style.display = tier === 'international' ? 'flex' : 'none';
+
+  // Update refresh label
+  const labels = {local: 'Local', official: 'Official', international: 'International'};
+  document.getElementById('refreshTierLabel').textContent = labels[tier] || tier;
+
+  loadStores();
+}
+
+async function refreshTier() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner">↺</span> Refreshing...';
+  try {
+    await fetch(`/api/refresh/${currentTier}`, {method: 'POST'});
+    setTimeout(() => { btn.disabled=false; btn.innerHTML='↺ Refresh <span id="refreshTierLabel">' + currentTier + '</span>'; loadStores(); }, 2000);
+  } catch(e) {
+    btn.disabled=false; btn.innerHTML='↺ Refresh <span id="refreshTierLabel">' + currentTier + '</span>';
+  }
+}
+
 async function loadStores() {
-  const res = await fetch('/api/stores');
-  const stores = await res.json();
+  const subTier = document.getElementById('subTierFilter')?.value || 'all';
+  const country = document.getElementById('countryFilter')?.value || 'all';
+
+  let url = '/api/stores?source_type=' + currentTier;
+  if (currentTier === 'international') {
+    if (subTier !== 'all') url += '&sub_tier=' + subTier;
+    if (country !== 'all') url += '&country_code=' + country;
+  }
+
+  const res = await fetch(url);
+  let stores = await res.json();
+  // Filter by user selected stores
+  if (window._userStoreNames && window._userStoreNames.size > 0) {
+    stores = stores.filter(s => window._userStoreNames.has(s.name));
+  }
   const grid = document.getElementById('storesGrid');
 
   if (!stores.length) {
-    grid.innerHTML = '<div class="text-slate-500 text-sm col-span-3">No DB-managed stores yet. Click "Add Store" to add one.</div>';
+    grid.innerHTML = '<div class="text-slate-500 text-sm col-span-3">No stores found for this tier.</div>';
     return;
   }
 
   const platformColor = p => p === 'shopify' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : p === 'woocommerce' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-500/20 text-slate-300 border border-slate-500/30';
+  const countryFlags = {AE:'🇦🇪',SA:'🇸🇦',KW:'🇰🇼',TR:'🇹🇷',DE:'🇩🇪',GB:'🇬🇧',CN:'🇨🇳',US:'🌍',LB:'🇱🇧'};
+  const countryNames = {AE:'UAE',SA:'KSA',KW:'Kuwait',TR:'Turkey',DE:'Germany',GB:'UK',CN:'China',US:'Global',LB:'Lebanon'};
 
   if (currentView === 'grid') {
     grid.innerHTML = stores.map(s => `
@@ -324,6 +601,9 @@ async function loadStores() {
             <div class="text-white font-semibold">${s.last_scraped ? s.last_scraped.slice(0,16).replace('T',' ') : 'Never'}</div>
           </div>
           ${s.collection_slug ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">Collection filter</div><div class="text-indigo-300 font-semibold">${s.collection_slug}</div></div>` : ''}
+          ${s.country_code ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">Country</div><div class="font-semibold">${countryFlags[s.country_code]||''} ${countryNames[s.country_code]||s.country_code}</div></div>` : ''}
+          ${s.currency && s.currency !== 'USD' ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">Currency</div><div class="text-amber-300 font-semibold">${s.currency}</div></div>` : ''}
+          ${s.sub_tier && s.sub_tier !== 'local' && s.sub_tier !== 'official' ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">Tier</div><div class="text-emerald-300 font-semibold">${s.sub_tier}</div></div>` : ''}
           ${s.lego_only ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">Brand filter</div><div class="text-amber-400 font-semibold">🟡 LEGO-only</div></div>` : ''}
           ${s.new_arrivals_collection ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">New arrivals</div><div class="text-emerald-300 font-semibold">${s.new_arrivals_collection}</div></div>` : ''}
           ${s.vat_multiplier && s.vat_multiplier !== 1.0 ? `<div class="bg-slate-900/40 rounded-lg p-2"><div class="text-slate-500 mb-0.5">VAT multiplier</div><div class="text-amber-300 font-semibold">×${s.vat_multiplier}</div></div>` : ''}
@@ -420,13 +700,35 @@ async function toggleStore(id, btn) {
 
 // ── Delete store ──
 async function deleteStore(id, name, btn) {
-  if (!confirm(`Delete ${name}? This won't remove historical snapshots.`)) return;
+  if (!confirm(`Delete ${name}? This will not remove historical snapshots.`)) return;
   await fetch('/api/stores/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
   loadStores();
 }
 
 // ── Wizard ──
 function openAddWizard() {
+  // Check plan store limit
+  if (window._userCtx && window._userCtx.logged_in) {
+    const plan = window._userCtx.plan_name;
+    const limits = {Free:3, Starter:10, Pro:50, Premium:-1};
+    const limit = limits[plan] !== undefined ? limits[plan] : 3;
+    const selected = window._userStoreNames ? window._userStoreNames.size : 0;
+    if (limit !== -1 && selected >= limit) {
+      if (confirm('You have reached your ' + plan + ' plan limit of ' + limit + ' stores.\n\nSubmit a store request to add more (additional billing applies).\n\nGo to store request form?')) {
+        document.getElementById('wizardOverlay').classList.add('hidden');
+        // Open request form inside wizard
+        document.getElementById('wizardOverlay').classList.remove('hidden');
+        document.getElementById('wizardOverlay').classList.add('flex');
+        goStep(1);
+        // Skip to request step
+        setTimeout(() => {
+          const reqForm = document.getElementById('requestForm');
+          if (reqForm) reqForm.classList.remove('hidden');
+        }, 100);
+      }
+      return;
+    }
+  }
   document.getElementById('wizardOverlay').classList.remove('hidden');
   document.getElementById('wizardOverlay').classList.add('flex');
   goStep(1);
@@ -457,6 +759,41 @@ function toggleVat() {
   document.getElementById('vatMultiplier').classList.toggle('hidden', !checked);
 }
 
+async function submitStoreRequest() {
+  const btn   = document.querySelector('#requestForm button');
+  const name  = document.getElementById('reqName').value.trim();
+  const email = document.getElementById('reqEmail').value.trim();
+  const notes = document.getElementById('reqNotes').value.trim();
+  if (!email) { alert('Please enter your email'); return; }
+  const req   = window._pendingRequest || {};
+  btn.disabled = true;
+  btn.textContent = '⟳ Submitting...';
+  try {
+    const res  = await fetch('/api/stores/request', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...req, name, email, notes})
+    });
+    const data = await res.json();
+    const succ = document.getElementById('reqSuccess');
+    if (data.duplicate) {
+      btn.disabled = false;
+      btn.textContent = '📬 Submit Request';
+      succ.textContent = '⚠ ' + data.message;
+      succ.style.color = '#fcd34d';
+    } else {
+      btn.textContent = '✓ Submitted';
+      succ.textContent = '✓ Request submitted! We will be in touch.';
+      succ.style.color = '#34d399';
+    }
+    succ.classList.remove('hidden');
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '📬 Submit Request';
+    alert('Could not submit request: ' + e.message);
+  }
+}
+
 async function testStore() {
   const url = document.getElementById('storeUrl').value.trim();
   if (!url) { showError('step1Error', 'Please enter a URL'); return; }
@@ -480,39 +817,57 @@ async function testStore() {
 
     document.getElementById('testLoading').classList.add('hidden');
 
-    if (data.error) {
-      document.getElementById('testError').classList.remove('hidden');
-      document.getElementById('testErrorMsg').textContent = data.error;
-    } else {
-      document.getElementById('testResults').classList.remove('hidden');
-      document.getElementById('detectedPlatform').textContent = `Platform: ${data.platform.charAt(0).toUpperCase() + data.platform.slice(1)}`;
-      document.getElementById('detectedCount').textContent = `Found ${data.product_count}+ products`;
+    const tierColors = {
+      free:  {bg:'rgba(16,185,129,0.12)',border:'rgba(16,185,129,0.3)',text:'#34d399',label:'✓ FREE — Ready to add'},
+      tier2: {bg:'rgba(99,102,241,0.12)',border:'rgba(99,102,241,0.3)',text:'#a5b4fc',label:'🔒 TIER 2 — ~$2/mo'},
+      tier3: {bg:'rgba(217,119,6,0.12)', border:'rgba(217,119,6,0.3)', text:'#fcd34d',label:'🔒 TIER 3 — ~$5/mo'},
+      tier4: {bg:'rgba(239,68,68,0.12)', border:'rgba(239,68,68,0.3)', text:'#f87171',label:'⛔ TIER 4 — Not possible'},
+      unreachable: {bg:'rgba(100,116,139,0.12)',border:'rgba(100,116,139,0.3)',text:'#94a3b8',label:'⚠ Unreachable'},
+    };
 
+    if (data.scrapable) {
+      // Free tier — show results
+      document.getElementById('testResults').classList.remove('hidden');
+      document.getElementById('detectedPlatform').textContent = `Platform: ${(data.platform||'').charAt(0).toUpperCase()+(data.platform||'').slice(1)}`;
+      document.getElementById('detectedCount').textContent = `Found ${data.product_count}+ products`;
       const samplesEl = document.getElementById('sampleProducts');
-      samplesEl.innerHTML = data.samples.map(s => `
+      samplesEl.innerHTML = (data.samples||[]).map(s => `
         <div class="flex items-center gap-3 bg-slate-900/60 rounded-lg p-2">
           ${s.image ? `<img src="${s.image}" class="w-10 h-10 object-cover rounded" onerror="this.style.display='none'">` : '<div class="w-10 h-10 bg-slate-700 rounded flex items-center justify-center text-slate-500 text-xs">?</div>'}
           <div class="flex-1 min-w-0">
             <div class="text-xs font-medium truncate">${s.title}</div>
-            <div class="text-xs text-slate-400">${s.item_number !== '—' ? '#' + s.item_number : 'No item number'} ${s.price ? '· $' + parseFloat(s.price).toFixed(2) : ''}</div>
+            <div class="text-xs text-slate-400">${s.item_number !== '—' ? '#'+s.item_number : 'No item #'} ${s.price ? '· $'+parseFloat(s.price).toFixed(2) : ''}</div>
           </div>
-        </div>
-      `).join('');
-
-      // Pre-fill store name from URL
+        </div>`).join('');
       try {
         const hostname = new URL(data.url).hostname.replace('www.','');
-        const nameParts = hostname.split('.')[0];
-        document.getElementById('storeName').value = nameParts.charAt(0).toUpperCase() + nameParts.slice(1);
+        document.getElementById('storeName').value = hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
       } catch(e) {}
-      // Pre-fill collection slug in step 3
       const slug = document.getElementById('testCollectionSlug').value.trim();
       if (slug) document.getElementById('newArrivalsSlug').value = slug;
-
       document.getElementById('step2Actions').classList.remove('hidden');
-
-      // Run AI analysis in background
       runAiStoreAnalysis(data);
+
+    } else if (data.tier === 'unreachable') {
+      document.getElementById('testError').classList.remove('hidden');
+      document.getElementById('testErrorMsg').textContent = data.diagnosis || data.error;
+
+    } else {
+      // Blocked — show tier diagnosis
+      document.getElementById('testBlocked').classList.remove('hidden');
+      const tier = data.tier || 'tier2';
+      const tc = tierColors[tier] || tierColors.tier2;
+      document.getElementById('tierBadge').innerHTML = `
+        <span style="background:${tc.bg};border:1px solid ${tc.border};border-radius:8px;padding:0.3rem 0.8rem;font-size:0.72rem;font-weight:700;color:${tc.text};">${tc.label}</span>
+        ${data.platform ? `<span style="font-size:0.7rem;color:#475569;margin-left:0.5rem;">Platform: ${data.platform}</span>` : ''}
+        ${data.block_type ? `<span style="font-size:0.7rem;color:#475569;margin-left:0.5rem;">Block: ${data.block_type}</span>` : ''}
+      `;
+      document.getElementById('diagnosisText').textContent = data.diagnosis || '';
+      if (tier !== 'tier4') {
+        document.getElementById('requestForm').classList.remove('hidden');
+        // Store data for request submission
+        window._pendingRequest = {url: data.url, tier, tier_cost: data.tier_cost, platform: data.platform, block_type: data.block_type};
+      }
     }
   } catch(e) {
     document.getElementById('testLoading').classList.add('hidden');
@@ -704,11 +1059,37 @@ loadStores();
       <button onclick="closeDiscovery()" style="background:none;border:none;cursor:pointer;color:#475569;font-size:1rem;">✕</button>
     </div>
     <div style="padding:1.25rem;">
-      <p style="font-size:0.78rem;color:#64748b;margin-bottom:1rem;">AI will search for LEGO stores in your region and suggest ones to add.</p>
+      <p style="font-size:0.78rem;color:#64748b;margin-bottom:1rem;">AI will search for stores in your selected tier and region.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+        <div>
+          <label style="font-size:0.7rem;color:#475569;display:block;margin-bottom:0.25rem;">Tier</label>
+          <select id="discoveryTier" onchange="onDiscoveryTierChange()"
+            style="width:100%;background:#0a0f1a;border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.4rem 0.5rem;color:#e2e8f0;font-size:0.8rem;">
+            <option value="local">🏪 Local</option>
+            <option value="official">🏭 Official Brand</option>
+            <option value="international">🌍 International</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.7rem;color:#475569;display:block;margin-bottom:0.25rem;">Country</label>
+          <select id="discoveryCountry"
+            style="width:100%;background:#0a0f1a;border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.4rem 0.5rem;color:#e2e8f0;font-size:0.8rem;">
+            <option value="LB">🇱🇧 Lebanon</option>
+            <option value="AE">🇦🇪 UAE</option>
+            <option value="SA">🇸🇦 KSA</option>
+            <option value="KW">🇰🇼 Kuwait</option>
+            <option value="TR">🇹🇷 Turkey</option>
+            <option value="DE">🇩🇪 Germany</option>
+            <option value="GB">🇬🇧 UK</option>
+            <option value="CN">🇨🇳 China</option>
+            <option value="US">🌍 Global</option>
+          </select>
+        </div>
+      </div>
       <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
         <input id="discoveryRegion" type="text" value="Lebanon"
           style="flex:1;background:#0a0f1a;border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.4rem 0.75rem;color:#e2e8f0;font-size:0.82rem;outline:none;"
-          placeholder="e.g. Lebanon, Middle East..."
+          placeholder="e.g. Lebanon, Dubai, Germany..."
           onkeydown="if(event.key==='Enter') runDiscovery()">
         <button onclick="runDiscovery()"
           style="background:#6366f1;border:none;border-radius:8px;padding:0.4rem 1rem;color:#fff;font-weight:600;font-size:0.82rem;cursor:pointer;">
@@ -722,10 +1103,31 @@ loadStores();
 </div>
 
 <script>
+function onDiscoveryTierChange() {
+  const tier = document.getElementById('discoveryTier').value;
+  const regionMap = {local:'Lebanon', official:'Global', international:'UAE'};
+  document.getElementById('discoveryRegion').value = regionMap[tier] || 'Lebanon';
+  if (tier === 'official') {
+    document.getElementById('discoveryCountry').value = 'US';
+  }
+}
+
 function openDiscovery() {
+  if (window._userCtx && window._userCtx.logged_in && ['Free','Starter'].includes(window._userCtx.plan_name)) {
+    alert('AI Store Discovery requires Pro or Premium plan.\nUpgrade your plan to access this feature.');
+    return;
+  }
   document.getElementById('discoveryOverlay').style.display = 'flex';
   document.getElementById('discoveryResults').innerHTML = '';
   document.getElementById('discoveryStatus').style.display = 'none';
+  // Pre-fill from active tab
+  const tierMap = {local:'local', official:'official', international:'international'};
+  const tier = tierMap[currentTier] || 'local';
+  document.getElementById('discoveryTier').value = tier;
+  // Pre-fill country from active country filter
+  const ctry = document.getElementById('countryFilter')?.value;
+  if (ctry && ctry !== 'all') document.getElementById('discoveryCountry').value = ctry;
+  onDiscoveryTierChange();
 }
 function closeDiscovery() {
   document.getElementById('discoveryOverlay').style.display = 'none';
@@ -744,7 +1146,11 @@ async function runDiscovery() {
     const resp = await fetch('/api/ai/discover-stores', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ region })
+      body: JSON.stringify({
+        region,
+        tier:    document.getElementById('discoveryTier').value,
+        country: document.getElementById('discoveryCountry').value,
+      })
     });
 
     const reader = resp.body.getReader();
@@ -770,10 +1176,25 @@ async function runDiscovery() {
       }
     }
 
-    // Parse JSON from response
+    // Parse JSON from response — with fallback for malformed JSON
     const match = fullText.match(/\[[\s\S]*\]/);
     if (match) {
-      const stores = JSON.parse(match[0]);
+      let stores;
+      try {
+        stores = JSON.parse(match[0]);
+      } catch(parseErr) {
+        // Try to extract individual objects even if array is malformed
+        const objMatches = match[0].match(/\{[^{}]+\}/g) || [];
+        stores = objMatches.map(obj => {
+          try { return JSON.parse(obj); } catch(e) {
+            // Extract fields manually
+            const name = (obj.match(/"name"\s*:\s*"([^"]+)"/) || [])[1] || '';
+            const url  = (obj.match(/"url"\s*:\s*"([^"]+)"/) || [])[1] || '';
+            const notes= (obj.match(/"notes"\s*:\s*"([^"]+)"/) || [])[1] || '';
+            return name && url ? {name, url, notes, platform_guess: 'unknown'} : null;
+          }
+        }).filter(Boolean);
+      }
       if (stores.length === 0) {
         status.textContent = 'No new stores found in this region.';
         return;
@@ -1044,5 +1465,93 @@ function showSettingsStatus(msg, ok) {
 }
 </script>
 
+
+<style>
+  .about-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+  .about-overlay.open{display:flex;}
+  .about-card{background:#0d1420;border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:2.5rem 3rem;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.8);max-width:400px;width:90%;}
+  @keyframes popIn{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+</style>
+<div class="about-overlay" id="aboutModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="about-card">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:48px;width:auto;display:block;margin:0 auto 1.5rem;">
+    <div style="height:1px;background:rgba(99,102,241,0.12);margin-bottom:1.5rem"></div>
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.9rem">Developed by</div>
+    <a href="https://www.khwarizme.com/" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:1.25rem;text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <div style="background:#fff;border-radius:12px;padding:0.75rem 1.5rem;">
+        <img src="/static/khwarizme_logo.png" alt="Khwarizme" style="height:52px;width:auto;display:block;">
+      </div>
+    </a>
+    <div style="font-size:0.72rem;color:#64748b;font-family:monospace;margin-bottom:1.75rem">© 2026 · All rights reserved</div>
+    <button onclick="document.getElementById('aboutModal').classList.remove('open')"
+      style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:0.45rem 1.75rem;font-size:0.78rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    window._userCtx = ctx;
+
+    if (ctx.logged_in) {
+      // Show user nav
+      const navArea = document.getElementById('userNavArea');
+      if (navArea) {
+        navArea.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+
+      // Load user selected stores BEFORE loadStores runs
+      try {
+        const sel = await fetch('/api/user/selected-stores').then(r=>r.json());
+        if (sel && sel.length) {
+          window._userStoreNames = new Set(sel.map(s=>s.name));
+          // Reload stores with filter
+          if (typeof loadStores === 'function') loadStores();
+        }
+      } catch(e){}
+
+      // Gate DB tools and settings for free/starter
+      if (['Free','Starter'].includes(ctx.plan_name)) {
+        const dbSection = document.getElementById('dbToolsSection');
+        if (dbSection) {
+          dbSection.style.opacity = '0.4';
+          dbSection.style.pointerEvents = 'none';
+          dbSection.title = 'Requires Pro or Premium plan';
+        }
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+          settingsBtn.style.opacity = '0.4';
+          settingsBtn.style.cursor = 'not-allowed';
+          settingsBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); alert('Settings require Pro or Premium plan.'); };
+        }
+      }
+
+      // Gate other nav links
+      const f = ctx.features || {};
+      const gates = [
+        {href:'/official',key:'official'},{href:'/international',key:'international'},
+        {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      ];
+      document.querySelectorAll('a[href]').forEach(a => {
+        const gate = gates.find(g=>a.getAttribute('href')===g.href);
+        if (!gate||f[gate.key]) return;
+        a.style.opacity='0.35'; a.style.cursor='not-allowed';
+        a.addEventListener('click',e=>{
+          e.preventDefault();
+          alert('This feature requires a higher plan.\nUpgrade at /account');
+        });
+      });
+    }
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
 </body>
 </html>

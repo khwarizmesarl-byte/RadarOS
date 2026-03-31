@@ -1,0 +1,426 @@
+<!doctype html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+  <title>BrickRadar — International Prices</title>
+  <style>
+    .logo-click{cursor:pointer;transition:opacity 0.15s;}
+    .logo-click:hover{opacity:0.75;}
+    .store-logo-pill{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.25rem 0.6rem;transition:all 0.15s;text-decoration:none;}
+    .store-logo-pill:hover{background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.3);transform:translateY(-1px);}
+    .store-logo-pill img{height:18px;width:auto;max-width:60px;object-fit:contain;border-radius:2px;}
+    .store-logo-pill span{font-size:0.68rem;font-weight:600;color:#94a3b8;white-space:nowrap;}
+    .about-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+    .about-overlay.open{display:flex;}
+
+    /* Product card */
+    .prod-card {
+      background: #0d1420;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: all 0.18s;
+      display: flex;
+      flex-direction: column;
+    }
+    .prod-card:hover {
+      border-color: rgba(5,150,105,0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .prod-card img {
+      width: 100%; aspect-ratio: 1/1;
+      object-fit: cover;
+      background: #131e2e;
+    }
+    .prod-card .card-body {
+      padding: 0.75rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .prod-card .card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .prod-card .card-sku { font-size:0.68rem; font-family:monospace; color:#475569; }
+    .prod-card .card-price { font-size:0.9rem; font-weight:700; color:#34d399; margin-top:auto; padding-top:0.4rem; }
+    .card-avail { font-size:0.65rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:999px; }
+    .avail-in  { background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.25); }
+    .avail-out { background:rgba(239,68,68,0.1);   color:#f87171; border:1px solid rgba(239,68,68,0.2); }
+    .avail-na  { background:rgba(100,116,139,0.1); color:#64748b; border:1px solid rgba(100,116,139,0.2); }
+
+    .src-pill {
+      display:inline-flex; align-items:center; gap:0.3rem;
+      padding:0.15rem 0.5rem; border-radius:999px;
+      font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
+    }
+    .src-bricklink { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.25); }
+    .src-amazon    { background:rgba(251,191,36,0.15); color:#fcd34d; border:1px solid rgba(251,191,36,0.25); }
+    .src-aliexpress{ background:rgba(239,68,68,0.12);  color:#f87171; border:1px solid rgba(239,68,68,0.2); }
+
+    .tab-active   { background:var(--acc,#6366f1); color:#fff; border-color:var(--acc,#6366f1); }
+    .tab-inactive { background:rgba(255,255,255,0.03); color:#94a3b8; border-color:#1e293b; }
+    .tab-official-active { background:#d97706; color:#fff; border-color:#b45309; }
+    .tab-intl-active { background:#059669; color:#fff; border-color:#047857; }
+
+    .view-btn { padding:0.4rem 0.9rem; border-radius:8px; border:1px solid #1e293b; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.15s; background:rgba(255,255,255,0.03); color:#94a3b8; }
+    .view-btn.active { background:rgba(5,150,105,0.15); color:#34d399; border-color:rgba(5,150,105,0.3); }
+
+    /* Table */
+    table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+    thead th { background:#0a1220; padding:0.6rem 0.75rem; text-align:left; border-bottom:1px solid #1e293b; color:#64748b; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; }
+    tbody tr { border-top:1px solid rgba(30,41,59,0.6); transition:background 0.12s; }
+    tbody tr:hover { background:rgba(255,255,255,0.02); }
+    tbody td { padding:0.6rem 0.75rem; color:#cbd5e1; vertical-align:middle; }
+    .price-cell { font-weight:700; color:#34d399; }
+    .lowest-badge { background:rgba(5,150,105,0.15); color:#34d399; border:1px solid rgba(5,150,105,0.25); padding:0.1rem 0.4rem; border-radius:999px; font-size:0.65rem; font-weight:700; margin-left:0.3rem; }
+    .theme-btn.active { border-color: var(--acc, #6366f1) !important; box-shadow: 0 0 0 2px var(--acc, #6366f1); }
+</style>
+  <script src="/static/theme.js"></script>
+</head>
+<body class="bg-slate-900 text-white" style="padding:1.25rem">
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.6rem 0;margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a href="/" style="text-decoration:none;display:flex;align-items:center;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:36px;width:auto;display:block;">
+  </a>
+    <span style="color:#1e293b;font-size:0.8rem;margin-left:0.5rem;">|</span>
+    <span style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-left:0.3rem;">🌍 International</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+    <a href="/" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Dashboard</a>
+    <a href="/stores" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+    <a href="/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+    <a href="/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+    <a href="/analytics" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a><a href="/analytics/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">📊 Brand</a><a href="/analytics/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">Intl</a>
+    <a href="/advanced" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+    <a href="/radarlist" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">RadarList</a>
+    <div id="themeSwitcher" style="display:flex;align-items:center;gap:3px;"></div>
+    <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">About</a>
+  </div>
+</div>
+<!-- ── Filters ── -->
+<form method="get" class="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-4">
+  <div class="flex flex-wrap gap-3 items-end">
+
+    <div>
+      <label class="text-xs text-slate-300">Search</label>
+      <input name="q" value="{{ search_q }}" placeholder="Title or SKU"
+        class="mt-1 w-40 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500" />
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Tier</label>
+      <select name="sub_tier" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Sources</option>
+        <option value="global"   {% if selected_sub_tier == 'global'   %}selected{% endif %}>🌍 Global Platforms</option>
+        <option value="regional" {% if selected_sub_tier == 'regional' %}selected{% endif %}>📍 Regional Stores</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Country</label>
+      <select name="country" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Countries</option>
+        {% for code, meta in all_countries.items() %}
+          <option value="{{ code }}" {% if code == selected_country %}selected{% endif %}>{{ meta.flag }} {{ meta.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Store</label>
+      <select name="source" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Stores</option>
+        {% for s in all_sources %}
+          <option value="{{ s }}" {% if s == selected_source %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Theme</label>
+      <select name="theme" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="All">All Themes</option>
+        {% for t in all_themes %}
+          <option value="{{ t }}" {% if t == selected_theme %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Sort</label>
+      <select name="sort" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+        <option value="title"      {% if sort == 'title'      %}selected{% endif %}>Title A–Z</option>
+        <option value="price_asc"  {% if sort == 'price_asc'  %}selected{% endif %}>Price ↑</option>
+        <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Per page</label>
+      <select name="per_page" class="mt-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm">
+        {% for n in [48, 96, 192, 480] %}
+          <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- View toggle -->
+    <div class="flex gap-1 self-end ml-2">
+      <button type="button" id="btnGrid" class="view-btn active" onclick="setView('grid')">⊞ Cards</button>
+      <button type="button" id="btnTable" class="view-btn" onclick="setView('table')">≡ Table</button>
+    </div>
+
+    <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 font-semibold text-sm self-end">
+      Apply
+    </button>
+
+    <div class="text-xs text-slate-400 self-end ml-auto">
+      {{ total }} products &nbsp;·&nbsp; Page {{ page }} of {{ total_pages }}
+    </div>
+  </div>
+</form>
+
+<!-- ── Pagination ── -->
+{% if total_pages > 1 %}
+<div class="flex items-center gap-2 mb-4 flex-wrap">
+  {% set base_url = "/international?q=" ~ search_q ~ "&sub_tier=" ~ selected_sub_tier ~ "&country=" ~ selected_country ~ "&source=" ~ selected_source ~ "&theme=" ~ selected_theme ~ "&sort=" ~ sort ~ "&per_page=" ~ per_page %}
+  {% if page > 1 %}
+    <a href="{{ base_url }}&page=1"           class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">« First</a>
+    <a href="{{ base_url }}&page={{ page-1 }}" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">‹ Prev</a>
+  {% endif %}
+  <span style="padding:0.375rem 0.75rem;border-radius:0.5rem;background:#059669;color:#fff;font-size:0.875rem;font-weight:700;">{{ page }}</span>
+  {% if page < total_pages %}
+    <a href="{{ base_url }}&page={{ page+1 }}"         class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Next ›</a>
+    <a href="{{ base_url }}&page={{ total_pages }}"    class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold">Last »</a>
+  {% endif %}
+  <span class="text-xs text-slate-400 ml-2">{{ total }} items total</span>
+</div>
+{% endif %}
+
+<!-- ── Empty state ── -->
+{% if not rows %}
+<div class="text-center text-slate-500 py-24">
+  <div style="font-size:3.5rem;margin-bottom:1rem;">🌍</div>
+  <div class="text-lg font-semibold text-slate-400">No international price data yet</div>
+  <div class="text-sm mt-2 text-slate-500">Connect Bricklink, Amazon, or AliExpress scrapers to see prices here</div>
+  <div class="mt-8">
+    <div class="text-xs text-slate-600 uppercase tracking-widest mb-3 text-center">Global Platforms</div>
+    <div class="flex justify-center gap-3 mb-6 flex-wrap">
+      <span class="src-pill src-bricklink">Bricklink</span>
+      <span class="src-pill src-amazon">Amazon US</span>
+      <span class="src-pill src-aliexpress">AliExpress</span>
+      <span class="src-pill" style="background:rgba(99,102,241,0.12);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25);">eBay</span>
+      <span class="src-pill" style="background:rgba(251,146,60,0.12);color:#fb923c;border:1px solid rgba(251,146,60,0.25);">Taobao</span>
+      <span class="src-pill" style="background:rgba(251,146,60,0.12);color:#fb923c;border:1px solid rgba(251,146,60,0.25);">1688</span>
+    </div>
+    <div class="text-xs text-slate-600 uppercase tracking-widest mb-3 text-center">Regional Stores</div>
+    <div class="flex justify-center gap-3 flex-wrap">
+      <span class="src-pill" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">🇦🇪 Noon UAE</span>
+      <span class="src-pill" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">🇦🇪 Hamleys UAE</span>
+      <span class="src-pill" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">🇦🇪 Mumzworld</span>
+      <span class="src-pill" style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25);">🇦🇪 Toys R Us UAE</span>
+      <span class="src-pill" style="background:rgba(99,102,241,0.12);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25);">🇩🇪 Alternate DE</span>
+      <span class="src-pill" style="background:rgba(99,102,241,0.12);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25);">🇬🇧 Smyths UK</span>
+      <span class="src-pill" style="background:rgba(251,191,36,0.12);color:#fcd34d;border:1px solid rgba(251,191,36,0.25);">🇹🇷 Toyzz Shop TR</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Card Grid view ── -->
+{% if rows %}
+<div id="viewGrid">
+  <div class="grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+    {% for row in rows %}
+{% set currency_symbols = {"USD":"$","AED":"AED ","KWD":"KD ","SAR":"SAR ","EUR":"€","GBP":"£","TRY":"₺","CNY":"¥"} %}
+    {% set ns = namespace(cheapest_store=None, cheapest_offer=None, min_price=999999) %}
+    {% for store_name, offer in row.stores.items() %}
+      {% if offer.price and offer.price < ns.min_price %}
+        {% set ns.min_price = offer.price %}
+        {% set ns.cheapest_store = store_name %}
+        {% set ns.cheapest_offer = offer %}
+      {% endif %}
+    {% endfor %}
+    {% set cheapest_offer = ns.cheapest_offer %}
+    <a href="{{ cheapest_offer.link if cheapest_offer else '#' }}" target="_blank" rel="noopener" class="prod-card" style="text-decoration:none;">
+      {% if row.image_url %}
+        <img src="{{ row.image_url }}" alt="{{ row.title }}" loading="lazy"
+             onerror="this.src='';this.style.background='#131e2e';this.style.height='160px'" />
+      {% else %}
+        <div style="aspect-ratio:1/1;background:#131e2e;display:flex;align-items:center;justify-content:center;font-size:2rem;">🌍</div>
+      {% endif %}
+      <div class="card-body">
+        <div class="card-title">{{ row.title }}</div>
+        <div class="card-sku">{{ row.item_number }}</div>
+        {% if row.theme %}<div style="font-size:0.65rem;color:#475569;">{{ row.theme }}</div>{% endif %}
+        <div class="flex items-center justify-between mt-auto pt-2">
+          {% if cheapest_offer and cheapest_offer.price %}
+            {% set _cur = store_currency.get(ns.cheapest_store, "USD") %}
+            {% set _sym = currency_symbols.get(_cur, _cur ~ " ") %}
+            <div class="card-price">{{ _sym }}{{ "%.3f"|format(cheapest_offer.price) if _cur == "KWD" else "%.2f"|format(cheapest_offer.price) }}</div>
+          {% else %}
+            <div class="card-price" style="color:#475569;">—</div>
+          {% endif %}
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">
+            {% for sname, offer in row.stores.items() %}
+              {% if sname == 'Bricklink' %}
+                <span class="src-pill src-bricklink">BL</span>
+              {% elif 'Amazon' in sname %}
+                <span class="src-pill src-amazon">AMZ</span>
+              {% elif 'Ali' in sname %}
+                <span class="src-pill src-aliexpress">ALI</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        <!-- Price per source -->
+        {% for sname, offer in row.stores.items() %}
+          {% if offer.price %}
+          <div style="font-size:0.65rem;color:#64748b;display:flex;justify-content:space-between;">
+            <span>{{ sname }}</span>
+            {% set _cur2 = store_currency.get(sname, "USD") %}
+            {% set _sym2 = currency_symbols.get(_cur2, _cur2 ~ " ") %}
+            <span style="color:#94a3b8;">{{ _sym2 }}{{ "%.3f"|format(offer.price) if _cur2 == "KWD" else "%.2f"|format(offer.price) }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Table view ── -->
+<div id="viewTable" style="display:none;overflow-x:auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Item #</th>
+        <th>Title</th>
+        <th>Theme</th>
+        {% for s in intl_stores %}
+        <th>{{ s }}</th>
+        {% endfor %}
+        <th>Lowest</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set prices = row.stores.values() | selectattr('price') | map(attribute='price') | list %}
+      {% set lowest = prices | min if prices else None %}
+      <tr>
+        <td style="font-family:monospace;font-size:0.75rem;color:#475569;">{{ row.item_number }}</td>
+        <td>
+          <div style="font-weight:600;color:#e2e8f0;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.title }}</div>
+        </td>
+        <td style="color:#64748b;font-size:0.75rem;">{{ row.theme }}</td>
+        {% for s in intl_stores %}
+          {% set offer = row.stores.get(s) %}
+          <td class="price-cell">
+            {% if offer and offer.price %}
+              <a href="{{ offer.link }}" target="_blank" style="color:inherit;text-decoration:none;">
+                ${{ "%.2f"|format(offer.price) }}
+                {% if offer.price == lowest %}<span class="lowest-badge">LOW</span>{% endif %}
+              </a>
+            {% else %}
+              <span style="color:#1e293b;">—</span>
+            {% endif %}
+          </td>
+        {% endfor %}
+        <td class="price-cell">
+          {% if lowest %}${{ "%.2f"|format(lowest) }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ── About modal ── -->
+<div id="aboutModal" class="about-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div style="background:#0d1420;border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:2.5rem 3rem;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.8);max-width:400px;width:90%;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:48px;width:auto;display:block;margin:0 auto 1.5rem;">
+    <div style="height:1px;background:rgba(99,102,241,0.12);margin-bottom:1.5rem"></div>
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.9rem">Developed by</div>
+    <a href="https://www.khwarizme.com/" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:1.25rem;text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <div style="background:#fff;border-radius:12px;padding:0.75rem 1.5rem;">
+        <img src="/static/khwarizme_logo.png" alt="Khwarizme" style="height:52px;width:auto;display:block;">
+      </div>
+    </a>
+    <div style="font-size:0.72rem;color:#64748b;font-family:monospace;margin-bottom:1.75rem">© 2026 · All rights reserved</div>
+    <button onclick="document.getElementById('aboutModal').classList.remove('open')"
+      style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:0.45rem 1.75rem;font-size:0.78rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+
+<script>
+// ── View toggle ──
+function setView(v) {
+  const grid  = document.getElementById('viewGrid');
+  const table = document.getElementById('viewTable');
+  const btnG  = document.getElementById('btnGrid');
+  const btnT  = document.getElementById('btnTable');
+  if (!grid || !table) return;
+  if (v === 'grid') {
+    grid.style.display  = '';
+    table.style.display = 'none';
+    btnG.classList.add('active');
+    btnT.classList.remove('active');
+    localStorage.setItem('intl_view', 'grid');
+  } else {
+    grid.style.display  = 'none';
+    table.style.display = '';
+    btnG.classList.remove('active');
+    btnT.classList.add('active');
+    localStorage.setItem('intl_view', 'table');
+  }
+}
+// Restore last view
+(function() {
+  const saved = localStorage.getItem('intl_view');
+  if (saved === 'table') setView('table');
+})();
+
+// ── Store Logos ──
+async function loadStoreLogos() {
+  try {
+    const logos = await fetch('/api/stores/logos').then(r => r.json());
+    const bar = document.getElementById('storeLogoBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    let urlMap = {};
+    try {
+      const stores = await fetch('/api/stores').then(r => r.json());
+      stores.forEach(s => { urlMap[s.name] = s.base_url; });
+    } catch(e) {}
+    Object.entries(logos).forEach(([name, logoUrl]) => {
+      const pill = document.createElement('a');
+      pill.className = 'store-logo-pill';
+      pill.title = name;
+      pill.href = urlMap[name] || '#';
+      pill.target = '_blank';
+      pill.rel = 'noopener';
+      pill.innerHTML = `<img src="${logoUrl}" alt="${name}" onerror="this.style.display='none'"><span>${name}</span>`;
+      bar.appendChild(pill);
+    });
+  } catch(e) {}
+}
+loadStoreLogos();
+</script>
+</body>
+</html>

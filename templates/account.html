@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account — RadarOS</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+  .topnav{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.5rem;border-bottom:1px solid #1e293b;background:#0f172a;}
+  .topnav-left{display:flex;align-items:center;gap:0.75rem;}
+  .topnav a{font-size:0.75rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;}
+  .topnav a:hover{color:#e2e8f0;background:#1e293b;}
+  .topnav a.active{color:#a5b4fc;}
+  .logo{font-size:0.85rem;font-weight:700;color:#e2e8f0;}
+  .container{max-width:900px;margin:0 auto;padding:2rem 1rem;}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+  .card-title{font-size:0.82rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;}
+  .plan-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;font-size:0.78rem;font-weight:700;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  .info-row{display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #1e293b;font-size:0.8rem;}
+  .info-row:last-child{border-bottom:none;}
+  .info-label{color:#64748b;}
+  .info-val{color:#e2e8f0;font-weight:500;}
+  .store-pill{display:inline-flex;align-items:center;gap:5px;background:#1e293b;border-radius:6px;padding:4px 10px;font-size:0.72rem;margin:3px;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:600;}
+  .badge-paid{background:rgba(52,211,153,0.15);color:#34d399;}
+  .badge-draft{background:rgba(71,85,105,0.3);color:#64748b;}
+  .badge-sent{background:rgba(165,180,252,0.15);color:#a5b4fc;}
+  .badge-overdue{background:rgba(248,113,113,0.15);color:#f87171;}
+  table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  th{text-align:left;padding:0.5rem 0.75rem;color:#475569;font-weight:600;border-bottom:1px solid #1e293b;}
+  td{padding:0.5rem 0.75rem;border-bottom:1px solid #0f172a;}
+  .empty{color:#334155;text-align:center;padding:1.5rem;}
+  .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;}
+  .feature-item{display:flex;align-items:center;gap:6px;font-size:0.75rem;padding:0.4rem 0.6rem;border-radius:6px;background:#020817;}
+  .feat-on{color:#34d399;} .feat-off{color:#334155;}
+  .btn{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:0.5rem 1rem;font-size:0.78rem;font-weight:600;cursor:pointer;}
+  .btn:hover{background:#4f46e5;}
+  .btn-sm{padding:3px 10px;font-size:0.7rem;border-radius:6px;border:none;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="topnav-left">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'" style="height:24px;">
+    <span class="logo">RadarOS</span>
+    <span style="color:#1e293b;">|</span>
+    <a href="/">Dashboard</a>
+    <a href="/account" class="active">Account</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span id="navName" style="font-size:0.75rem;color:#64748b;"></span>
+    <a href="/api/user/logout" style="font-size:0.75rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Profile & Plan -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Profile</div>
+      <div class="info-row"><span class="info-label">Name</span><span class="info-val" id="profileName">—</span></div>
+      <div class="info-row"><span class="info-label">Email</span><span class="info-val" id="profileEmail">—</span></div>
+      <div class="info-row"><span class="info-label">Country</span><span class="info-val" id="profileCountry">—</span></div>
+      <div class="info-row"><span class="info-label">Member since</span><span class="info-val" id="profileSince">—</span></div>
+      <div class="info-row"><span class="info-label">Type</span><span class="info-val" id="profileType">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Current Plan</div>
+      <div style="margin-bottom:0.75rem;">
+        <span class="plan-badge" id="planBadge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;">—</span>
+      </div>
+      <div class="info-row"><span class="info-label">Price</span><span class="info-val" id="planPrice">—</span></div>
+      <div class="info-row"><span class="info-label">Store limit</span><span class="info-val" id="planStoreLimit">—</span></div>
+      <div class="card-title" style="margin-top:0.75rem;">Features</div>
+      <div class="feature-grid" id="featureGrid"></div>
+    </div>
+  </div>
+
+  <!-- Selected Stores -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <div class="card-title" style="margin-bottom:0;">My Stores</div>
+      <button class="btn" onclick="window.location.href='/setup'" style="font-size:0.72rem;padding:4px 12px;">Change Stores</button>
+    </div>
+    <div id="myStores"><span class="empty">Loading...</span></div>
+  </div>
+
+  <!-- Invoices -->
+  <div class="card">
+    <div class="card-title">Invoices</div>
+    <table>
+      <thead><tr><th>Invoice #</th><th>Amount</th><th>Status</th><th>Due Date</th><th>Created</th></tr></thead>
+      <tbody id="invoicesTable"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const FEATURE_LABELS = {
+  dashboard:'Dashboard', stores:'Stores', official:'Official brands',
+  international:'International', analytics:'Analytics', advanced:'Advanced',
+  radarlist:'RadarList', store_requests:'Store Requests',
+  orders:'Orders/Quotes', ai_notifications:'AI Notifications'
+};
+const PLAN_COLORS = {Free:'#475569',Starter:'#a5b4fc',Pro:'#fcd34d',Premium:'#34d399'};
+
+async function init() {
+  const me = await fetch('/api/user/me').then(r=>r.json()).catch(()=>null);
+  if (!me || me.error) { window.location.href='/login'; return; }
+
+  document.getElementById('navName').textContent = me.name;
+  document.getElementById('profileName').textContent  = me.name;
+  document.getElementById('profileEmail').textContent = me.email;
+  document.getElementById('profileCountry').textContent = me.country_code || '—';
+  document.getElementById('profileSince').textContent = (me.created_at||'').substring(0,10);
+  document.getElementById('profileType').textContent = me.registration_type==='self' ? 'Self-registered' : 'Manual';
+
+  const planColor = PLAN_COLORS[me.plan_name] || '#a5b4fc';
+  document.getElementById('planBadge').textContent = me.plan_name || '—';
+  document.getElementById('planBadge').style.background = planColor+'22';
+  document.getElementById('planBadge').style.color = planColor;
+  document.getElementById('planPrice').textContent = me.plan_price===0 ? 'Free' : '$'+me.plan_price+'/mo';
+  document.getElementById('planStoreLimit').textContent = me.store_limit==-1 ? 'Unlimited' : (me.store_limit||3)+' stores';
+
+  // Features
+  let features = {};
+  try { features = JSON.parse(me.features||'{}'); } catch(e){}
+  document.getElementById('featureGrid').innerHTML = Object.entries(FEATURE_LABELS).map(([k,label])=>`
+    <div class="feature-item">
+      <span class="${features[k]?'feat-on':'feat-off'}">${features[k]?'✓':'—'}</span>
+      <span style="color:${features[k]?'#94a3b8':'#334155'}">${label}</span>
+    </div>`).join('');
+
+  // Selected stores
+  const stores = await fetch('/api/user/selected-stores').then(r=>r.json()).catch(()=>[]);
+  const storesEl = document.getElementById('myStores');
+  if (!stores.length) {
+    storesEl.innerHTML = '<span style="color:#334155;font-size:0.78rem;">No stores selected. <a href="/setup" style="color:#6366f1;">Setup now</a></span>';
+  } else {
+    storesEl.innerHTML = stores.map(s=>`
+      <span class="store-pill">
+        <span style="color:${s.source_type==='local'?'#a5b4fc':s.source_type==='official'?'#fcd34d':'#34d399'}">●</span>
+        ${s.name}
+      </span>`).join('');
+  }
+
+  // Invoices
+  const invs = await fetch('/api/user/invoices').then(r=>r.json()).catch(()=>[]);
+  const tb = document.getElementById('invoicesTable');
+  if (!invs.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty">No invoices yet</td></tr>';
+  } else {
+    tb.innerHTML = invs.map(i=>`<tr>
+      <td style="color:#a5b4fc;">${i.invoice_number}</td>
+      <td style="font-weight:600;">$${(i.amount||0).toFixed(2)}</td>
+      <td><span class="badge badge-${i.status}">${i.status}</span></td>
+      <td style="color:#64748b;">${i.due_date||'—'}</td>
+      <td style="color:#475569;">${(i.created_at||'').substring(0,10)}</td>
+    </tr>`).join('');
+  }
+}
+
+init();
+</script>
+</body>
+</html>

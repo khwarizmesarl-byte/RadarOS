@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — BrickRadar</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.5rem;background:#0f172a;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:100;}
+  .nav-left{display:flex;align-items:center;gap:0.75rem;}
+  .nav img{height:28px;}
+  .nav-title{font-size:0.85rem;font-weight:700;color:#e2e8f0;}
+  .nav-sub{font-size:0.65rem;color:#475569;margin-top:1px;}
+  .nav-links{display:flex;gap:0.25rem;}
+  .nav-link{padding:3px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;cursor:pointer;background:none;border:none;}
+  .nav-link:hover{background:rgba(99,102,241,0.12);color:#a5b4fc;}
+  .nav-link.active{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  .main{max-width:1200px;margin:0 auto;padding:1.5rem;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1.5rem;}
+  .kpi{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:1rem;}
+  .kpi-label{font-size:0.65rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
+  .kpi-val{font-size:1.6rem;font-weight:700;color:#e2e8f0;}
+  .kpi-sub{font-size:0.7rem;color:#334155;margin-top:0.2rem;}
+  .section{background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin-bottom:1rem;}
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid #1e293b;}
+  .section-title{font-size:0.8rem;font-weight:700;color:#e2e8f0;}
+  .section-body{padding:1rem;}
+  .tab-bar{display:flex;gap:0.25rem;padding:0.75rem 1.1rem 0;}
+  .tab{padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;color:#475569;cursor:pointer;border:none;background:none;}
+  .tab.active{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  th{text-align:left;padding:0.5rem 0.75rem;color:#334155;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #1e293b;}
+  td{padding:0.6rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;}
+  .badge-pending{background:rgba(245,158,11,0.15);color:#fcd34d;}
+  .badge-approved{background:rgba(16,185,129,0.15);color:#34d399;}
+  .badge-rejected{background:rgba(239,68,68,0.15);color:#f87171;}
+  .badge-tier2{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  .badge-tier3{background:rgba(217,119,6,0.15);color:#fcd34d;}
+  .btn-sm{padding:3px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;cursor:pointer;border:none;}
+  .btn-approve{background:rgba(16,185,129,0.15);color:#34d399;}
+  .btn-reject{background:rgba(239,68,68,0.15);color:#f87171;}
+  .btn-primary{background:#6366f1;color:#fff;padding:6px 16px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;}
+  .btn-primary:hover{background:#4f46e5;}
+  input[type=number]{background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.8rem;width:80px;}
+  input[type=number]:focus{outline:none;border-color:#6366f1;}
+  .empty{text-align:center;color:#334155;padding:2rem;font-size:0.8rem;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-left">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'" style="height:28px;">
+    <div>
+      <div class="nav-title" style="color:#EEEDFE;">Admin Dashboard</div>
+      <div class="nav-sub" style="color:#534AB7;">RadarOS — Khwarizme</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showTab('requests')">Store Requests</button>
+    <button class="nav-link" onclick="showTab('pricing')">Plans & Pricing</button>
+    <button class="nav-link" onclick="showTab('stores')">Stores</button>
+    <button class="nav-link" onclick="showTab('stats')">Stats</button>
+    <a href="/" class="nav-link">← BrickRadar</a>
+    <a href="/admin/logout" class="nav-link" style="color:#f87171;">Logout</a>
+  </div>
+</nav>
+
+<div style="width:100%;overflow:hidden;border-bottom:1px solid #0f172a;">
+  <img src="/assets/radaros_banner.svg" style="width:100%;display:block;max-height:200px;object-fit:cover;" onerror="this.style.display='none'">
+</div>
+
+<div class="main">
+
+  <!-- KPI Row -->
+  <div class="kpi-grid" id="kpiRow">
+    <div class="kpi"><div class="kpi-label">Total Snapshots</div><div class="kpi-val" id="kTotal">—</div></div>
+    <div class="kpi"><div class="kpi-label">Active Stores</div><div class="kpi-val" id="kStores">—</div></div>
+    <div class="kpi"><div class="kpi-label">Pending Requests</div><div class="kpi-val" id="kPending" style="color:#fcd34d;">—</div></div>
+    <div class="kpi"><div class="kpi-label">Total Requests</div><div class="kpi-val" id="kRequests">—</div></div>
+    <div class="kpi"><div class="kpi-label">DB Size</div><div class="kpi-val" id="kDb">—</div><div class="kpi-sub">MB</div></div>
+  </div>
+
+  <!-- Store Requests Tab -->
+  <div id="tab-requests" class="section">
+    <div class="tab-bar">
+      <button class="tab active" onclick="filterRequests('')">All</button>
+      <button class="tab" onclick="filterRequests('pending')">Pending</button>
+      <button class="tab" onclick="filterRequests('approved')">Approved</button>
+      <button class="tab" onclick="filterRequests('rejected')">Rejected</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Store URL</th><th>Tier</th><th>Platform</th>
+            <th>Requested by</th><th>Date</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="requestsTable"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Plans & Pricing Tab -->
+  <div id="tab-pricing" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Subscription Plans</div>
+      <button class="btn-primary" onclick="showAddPlanModal()">+ New Plan</button>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table>
+        <thead><tr>
+          <th>Plan Name</th><th>Price/mo</th><th>Currency</th>
+          <th>Store Limit</th><th>Refresh Limit</th><th>Tier Access</th>
+          <th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="plansTable"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="section-header" style="margin-top:1rem;border-top:1px solid #1e293b;">
+      <div class="section-title">Scraping Tier Pricing</div>
+      <button class="btn-primary" onclick="savePricing()">Save Changes</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead><tr><th>Tier</th><th>Price (USD/mo)</th><th>Description</th></tr></thead>
+        <tbody id="pricingTable"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody>
+      </table>
+      <div style="margin-top:0.75rem;font-size:0.72rem;color:#334155;">
+        Prices shown to users when requesting a premium store. Changes take effect immediately.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stores Tab -->
+  <div id="tab-stores" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">All Stores</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="filterModule" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Modules</option>
+          <option value="BrickRadar">BrickRadar</option>
+        </select>
+        <select id="filterTier" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Tiers</option>
+          <option value="local">Local</option>
+          <option value="official">Official</option>
+          <option value="international">International</option>
+        </select>
+        <select id="filterStatus" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <div id="storesGrouped"></div>
+    </div>
+  </div>
+
+  <!-- Stats Tab -->
+  <div id="tab-stats" class="section" style="display:none;">
+    <div class="section-header"><div class="section-title">Database Stats</div></div>
+    <div class="section-body" id="statsBody">Loading...</div>
+  </div>
+
+</div>
+
+<script>
+let ALL_REQUESTS = [];
+let ALL_PRICING  = [];
+
+function showTab(name) {
+  ['requests','users','invoices','payments','pricing','stores','stats'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (name==='stores')   loadStoresTab();
+  if (name==='stats')    loadStats();
+  if (name==='pricing')  loadPlansTab();
+  if (name==='users')    loadUsersTab();
+  if (name==='invoices') loadInvoicesTab();
+  if (name==='payments') loadPaymentsTab();
+}
+
+async function loadPlansTab() {
+  ALL_PLANS = await fetch('/api/admin/plans').then(r=>r.json());
+  const tb = document.getElementById('plansTable');
+  if (!ALL_PLANS.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No plans</td></tr>'; return; }
+  tb.innerHTML = ALL_PLANS.map(p => `
+    <tr>
+      <td style="font-weight:600;">${p.name}</td>
+      <td style="color:#fcd34d;">$${p.price}</td>
+      <td style="color:#64748b;">${p.currency}</td>
+      <td style="color:#64748b;">${p.store_limit==-1?'Unlimited':p.store_limit}</td>
+      <td style="color:#64748b;">${p.refresh_limit==-1?'Unlimited':p.refresh_limit}</td>
+      <td style="font-size:0.72rem;color:#94a3b8;">${p.tier_access}</td>
+      <td><span class="badge ${p.is_active?'badge-approved':'badge-rejected'}">${p.is_active?'Active':'Inactive'}</span></td>
+      <td style="display:flex;gap:4px;">
+        <button class="btn-sm" onclick="editPlan(${p.id})" style="background:rgba(99,102,241,0.15);color:#a5b4fc;">Edit</button>
+        <button class="btn-sm btn-reject" onclick="togglePlan(${p.id},${p.is_active})">${p.is_active?'Disable':'Enable'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+function showAddPlanModal() {
+  document.getElementById('planModalTitle').textContent = 'Add Plan';
+  document.getElementById('planId').value = '';
+  document.getElementById('planName').value = '';
+  document.getElementById('planPrice').value = '';
+  document.getElementById('planCurrency').value = 'USD';
+  document.getElementById('planStoreLimit').value = '3';
+  document.getElementById('planRefreshLimit').value = '1';
+  document.getElementById('planDesc').value = '';
+  document.getElementById('tierLocal').checked = true;
+  document.getElementById('tierOfficial').checked = false;
+  document.getElementById('tierIntl').checked = false;
+  document.getElementById('planModal').style.display = 'flex';
+}
+
+function editPlan(id) {
+  const p = ALL_PLANS.find(x=>x.id==id);
+  if (!p) return;
+  document.getElementById('planModalTitle').textContent = 'Edit Plan';
+  document.getElementById('planId').value = p.id;
+  document.getElementById('planName').value = p.name;
+  document.getElementById('planPrice').value = p.price;
+  document.getElementById('planCurrency').value = p.currency;
+  document.getElementById('planStoreLimit').value = p.store_limit;
+  document.getElementById('planRefreshLimit').value = p.refresh_limit;
+  document.getElementById('planDesc').value = p.description || '';
+  const tiers = (p.tier_access||'').split(',');
+  document.getElementById('tierLocal').checked    = tiers.includes('local');
+  document.getElementById('tierOfficial').checked = tiers.includes('official');
+  document.getElementById('tierIntl').checked     = tiers.includes('international');
+  document.getElementById('planModal').style.display = 'flex';
+}
+
+async function savePlan() {
+  const id       = document.getElementById('planId').value;
+  const planName = document.getElementById('planName').value.trim().toLowerCase();
+  const isBasic  = ['free','starter'].includes(planName);
+  if (isBasic) {
+    const warn = [];
+    if (document.getElementById('featAnalytics') && document.getElementById('featAnalytics').checked)  warn.push('Analytics');
+    if (document.getElementById('featAdvanced')  && document.getElementById('featAdvanced').checked)   warn.push('Advanced');
+    if (document.getElementById('featOrders')    && document.getElementById('featOrders').checked)     warn.push('Orders/Quotes');
+    if (document.getElementById('featAiNotif')   && document.getElementById('featAiNotif').checked)    warn.push('AI Notifications');
+    if (document.getElementById('planT2')        && document.getElementById('planT2').checked)         warn.push('Tier 2 Included');
+    if (document.getElementById('planT3')        && document.getElementById('planT3').checked)         warn.push('Tier 3 Included');
+    if (document.getElementById('tierIntl')      && document.getElementById('tierIntl').checked)       warn.push('International Stores');
+    if (warn.length) {
+      const ok = confirm('⚠ Warning: Enabling premium features on "' + document.getElementById('planName').value + '" plan:\n\n' + warn.map(f=>'  • '+f).join('\n') + '\n\nThis may not align with your pricing strategy. Continue?');
+      if (!ok) return;
+    }
+  }
+  const planIdVal = id;
+  const tiers = ['local','official','international'].filter(t=>document.getElementById('tier'+t.charAt(0).toUpperCase()+t.slice(1)+(t==='international'?'':'')  ).checked);
+  
+  // fix checkbox ids
+  const tierAccess = [
+    document.getElementById('tierLocal').checked ? 'local' : null,
+    document.getElementById('tierOfficial').checked ? 'official' : null,
+    document.getElementById('tierIntl').checked ? 'international' : null,
+  ].filter(Boolean).join(',');
+
+  const body = {
+    name:          document.getElementById('planName').value,
+    price:         parseFloat(document.getElementById('planPrice').value)||0,
+    currency:      document.getElementById('planCurrency').value,
+    store_limit:   parseInt(document.getElementById('planStoreLimit').value)||-1,
+    refresh_limit: parseInt(document.getElementById('planRefreshLimit').value)||-1,
+    tier_access:   tierAccess,
+    description:   document.getElementById('planDesc').value,
+  };
+  const url    = planIdVal ? `/api/admin/plans/${planIdVal}` : '/api/admin/plans';
+  const method = planIdVal ? 'PUT' : 'POST';
+  const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if (data.ok) { document.getElementById('planModal').style.display='none'; loadPlansTab(); }
+  else alert(data.error||'Failed');
+}
+
+async function togglePlan(id, current) {
+  await fetch(`/api/admin/plans/${id}/status`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:current?0:1})});
+  loadPlansTab();
+}
+
+async function init() {
+  // Load stats
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  document.getElementById('kTotal').textContent    = stats.total_snapshots.toLocaleString();
+  document.getElementById('kStores').textContent   = stats.total_stores;
+  document.getElementById('kPending').textContent  = stats.pending_requests;
+  document.getElementById('kRequests').textContent = stats.total_requests;
+  document.getElementById('kDb').textContent       = stats.db_size_mb;
+
+  // Load requests
+  ALL_REQUESTS = await fetch('/api/admin/requests').then(r=>r.json());
+  renderRequests(ALL_REQUESTS);
+
+  // Load pricing
+  ALL_PRICING = await fetch('/api/admin/pricing').then(r=>r.json());
+  renderPricing(ALL_PRICING);
+}
+
+function filterRequests(status) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  const filtered = status ? ALL_REQUESTS.filter(r=>r.status===status) : ALL_REQUESTS;
+  renderRequests(filtered);
+}
+
+function renderRequests(rows) {
+  const tb = document.getElementById('requestsTable');
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No requests found</td></tr>'; return; }
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td style="color:#334155;">${r.id}</td>
+      <td><a href="${r.url}" target="_blank" style="color:#a5b4fc;text-decoration:none;font-size:0.72rem;">${r.url.replace('https://','').substring(0,40)}</a></td>
+      <td><span class="badge badge-${r.tier}">${r.tier} · $${r.tier_cost}/mo</span></td>
+      <td style="color:#64748b;">${r.platform||'—'} / ${r.block_type||'—'}</td>
+      <td>
+        <div style="font-size:0.78rem;">${r.name||'—'}</div>
+        <div style="font-size:0.68rem;color:#475569;">${r.email}</div>
+      </td>
+      <td style="color:#475569;font-size:0.72rem;">${(r.created_at||'').substring(0,10)}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td>
+        ${r.status==='pending' ? `
+          <button class="btn-sm btn-approve" onclick="updateRequest(${r.id},'approved')">✓ Approve</button>
+          <button class="btn-sm btn-reject" onclick="updateRequest(${r.id},'rejected')" style="margin-left:4px;">✕ Reject</button>
+        ` : `<span style="font-size:0.7rem;color:#334155;">${r.status}</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updateRequest(id, status) {
+  await fetch(`/api/admin/requests/${id}/status`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  });
+  ALL_REQUESTS = await fetch('/api/admin/requests').then(r=>r.json());
+  renderRequests(ALL_REQUESTS);
+  // Refresh pending count
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  document.getElementById('kPending').textContent = stats.pending_requests;
+}
+
+function renderPricing(rows) {
+  document.getElementById('pricingTable').innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="badge badge-${r.tier}">${r.tier}</span></td>
+      <td><input type="number" step="0.5" min="0" value="${r.price}" id="price_${r.tier}"></td>
+      <td style="color:#64748b;font-size:0.78rem;">${r.description}</td>
+    </tr>
+  `).join('');
+}
+
+async function savePricing() {
+  const updated = ALL_PRICING.map(r => ({
+    tier: r.tier,
+    price: parseFloat(document.getElementById('price_'+r.tier).value) || r.price,
+    description: r.description
+  }));
+  await fetch('/api/admin/pricing', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(updated)
+  });
+  ALL_PRICING = updated;
+  alert('Pricing updated successfully.');
+}
+
+let ALL_STORES = [];
+
+async function loadStoresTab() {
+  ALL_STORES = await fetch('/api/stores').then(r=>r.json());
+  renderStoresTab();
+}
+
+function renderStoresTab() {
+  const filterModule = document.getElementById('filterModule').value;
+  const filterTier   = document.getElementById('filterTier').value;
+  const filterStatus = document.getElementById('filterStatus').value;
+  const modules = {'BrickRadar':{color:'#a5b4fc',bg:'rgba(99,102,241,0.06)'}};
+  const tiers = [
+    {key:'local',         label:'🏪 Local',          color:'#a5b4fc', bg:'rgba(99,102,241,0.08)'},
+    {key:'official',      label:'🏭 Official Brands', color:'#fcd34d', bg:'rgba(217,119,6,0.08)'},
+    {key:'international', label:'🌍 International',   color:'#34d399', bg:'rgba(16,185,129,0.08)'},
+  ];
+  const moduleList = filterModule ? [filterModule] : ['BrickRadar'];
+  let html = '';
+  moduleList.forEach(mod => {
+    const mc = modules[mod]||{color:'#94a3b8',bg:'rgba(100,116,139,0.06)'};
+    html += `<div style="padding:0.6rem 1rem;background:${mc.bg};border-bottom:1px solid #1e293b;font-size:0.72rem;font-weight:700;color:${mc.color};letter-spacing:0.06em;">${mod}</div>`;
+    const tierList = filterTier ? tiers.filter(t=>t.key===filterTier) : tiers;
+    tierList.forEach(tier => {
+      let stores = ALL_STORES.filter(s=>s.source_type===tier.key);
+      if (filterStatus==='active')   stores = stores.filter(s=>s.enabled);
+      if (filterStatus==='disabled') stores = stores.filter(s=>!s.enabled);
+      if (!stores.length) return;
+      html += `<div style="padding:0.4rem 1rem 0.4rem 1.5rem;background:${tier.bg};border-bottom:1px solid #1e293b;font-size:0.65rem;font-weight:700;color:${tier.color};text-transform:uppercase;letter-spacing:0.08em;">
+        ${tier.label} — ${stores.length} store${stores.length>1?'s':''}
+      </div>
+      <table style="margin-bottom:0;"><thead><tr>
+        <th style="padding-left:2rem;">Store</th><th>Platform</th><th>Country</th><th>Currency</th><th>Snapshots</th><th>Status</th>
+      </tr></thead><tbody>`;
+      stores.forEach(s => {
+        html += `<tr>
+          <td style="font-weight:600;padding-left:2rem;">${s.name}</td>
+          <td style="color:#64748b;">${s.platform||'—'}</td>
+          <td style="color:#64748b;">${s.country_code||'—'}</td>
+          <td style="color:#64748b;">${s.currency||'—'}</td>
+          <td style="color:#64748b;">${(s.snapshot_count||0).toLocaleString()}</td>
+          <td><span class="badge ${s.enabled?'badge-approved':'badge-rejected'}">${s.enabled?'Active':'Disabled'}</span></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    });
+  });
+  if (!html) html = '<div class="empty">No stores match filters</div>';
+  document.getElementById('storesGrouped').innerHTML = html;
+}
+
+async function loadStats() {
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  const byTier = stats.snapshots_by_tier || {};
+  document.getElementById('statsBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+      <div>
+        <div style="font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Snapshots by Tier</div>
+        ${Object.entries(byTier).map(([t,c])=>`
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e293b;font-size:0.78rem;">
+            <span style="color:#94a3b8;">${t}</span>
+            <span style="font-weight:600;">${c.toLocaleString()}</span>
+          </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Database</div>
+        <div style="font-size:0.78rem;color:#94a3b8;">Size: <strong style="color:#e2e8f0;">${stats.db_size_mb} MB</strong></div>
+        <div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">Path: <code style="color:#6366f1;font-size:0.68rem;">lego_tracker.sqlite3</code></div>
+      </div>
+    </div>
+  `;
+}
+
+init();
+</script>
+
+<!-- Plan Modal -->
+<div id="planModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:460px;max-height:90vh;overflow-y:auto;">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:1rem;" id="planModalTitle">Plan</div>
+    <input type="hidden" id="planId">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Plan Name</label>
+        <input id="planName" type="text" placeholder="e.g. Pro" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Price / month</label>
+        <input id="planPrice" type="number" step="0.5" min="0" placeholder="0" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Currency</label>
+        <select id="planCurrency" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+          <option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SAR</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Store Limit (-1 = unlimited)</label>
+        <input id="planStoreLimit" type="number" min="-1" placeholder="3" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Refresh Limit/day (-1 = unlimited)</label>
+        <input id="planRefreshLimit" type="number" min="-1" placeholder="1" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:6px;">Tier Access</label>
+        <div style="display:flex;gap:1rem;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierLocal"> 🏪 Local</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierOfficial"> 🏭 Official</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierIntl"> 🌍 International</label>
+        </div>
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Description</label>
+        <textarea id="planDesc" rows="2" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;resize:none;"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('planModal').style.display='none'" style="background:#1e293b;color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+      <button onclick="savePlan()" class="btn-primary">Save Plan</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

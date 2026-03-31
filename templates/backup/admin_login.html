@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login — BrickRadar</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:2.5rem;width:100%;max-width:380px;}
+  .logo{text-align:center;margin-bottom:2rem;}
+  .logo img{height:40px;margin-bottom:0.5rem;}
+  .logo div{font-size:0.75rem;color:#475569;}
+  label{font-size:0.75rem;color:#64748b;display:block;margin-bottom:0.35rem;}
+  input{width:100%;background:#020817;border:1px solid #1e293b;border-radius:8px;padding:0.6rem 0.85rem;font-size:0.875rem;color:#e2e8f0;outline:none;transition:border 0.15s;}
+  input:focus{border-color:#6366f1;}
+  .btn{width:100%;background:#6366f1;color:#fff;border:none;border-radius:8px;padding:0.65rem;font-size:0.875rem;font-weight:600;cursor:pointer;margin-top:1rem;transition:background 0.15s;}
+  .btn:hover{background:#4f46e5;}
+  .btn:disabled{background:#334155;cursor:not-allowed;}
+  .error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;color:#f87171;margin-top:0.75rem;display:none;}
+  .field{margin-bottom:1rem;}
+  .otp-hint{font-size:0.72rem;color:#475569;text-align:center;margin-top:0.5rem;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'" style="height:40px;">
+    <div>Admin Dashboard</div>
+  </div>
+  <div id="step1">
+    <div class="field">
+      <label>Admin Password</label>
+      <input type="password" id="pwd" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn" onclick="login()">Login →</button>
+    <div class="error" id="err1"></div>
+  </div>
+  <div id="step2" style="display:none;">
+    <div class="field">
+      <label>Verification Code</label>
+      <input type="text" id="otp" placeholder="6-digit code" maxlength="6" onkeydown="if(event.key==='Enter')verifyOtp()">
+    </div>
+    <p class="otp-hint">Code sent to your admin email. Valid for 5 minutes.</p>
+    <button class="btn" onclick="verifyOtp()">Verify →</button>
+    <div class="error" id="err2"></div>
+  </div>
+</div>
+<script>
+async function login() {
+  const pwd=document.getElementById('pwd').value;
+  const btn=document.querySelector('#step1 .btn');
+  const err=document.getElementById('err1');
+  err.style.display='none'; btn.disabled=true; btn.textContent='Checking...';
+  try {
+    const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    const data=await res.json();
+    if(data.ok){
+      if(data.otp_required){document.getElementById('step1').style.display='none';document.getElementById('step2').style.display='block';document.getElementById('otp').focus();}
+      else window.location.href='/admin';
+    } else {err.textContent=data.error||'Login failed';err.style.display='block';}
+  } catch(e){err.textContent='Connection error';err.style.display='block';}
+  btn.disabled=false; btn.textContent='Login →';
+}
+async function verifyOtp() {
+  const otp=document.getElementById('otp').value.trim();
+  const btn=document.querySelector('#step2 .btn');
+  const err=document.getElementById('err2');
+  err.style.display='none'; btn.disabled=true; btn.textContent='Verifying...';
+  try {
+    const res=await fetch('/admin/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({otp})});
+    const data=await res.json();
+    if(data.ok) window.location.href='/admin';
+    else {err.textContent=data.error||'Invalid code';err.style.display='block';}
+  } catch(e){err.textContent='Connection error';err.style.display='block';}
+  btn.disabled=false; btn.textContent='Verify →';
+}
+</script>
+</body>
+</html>

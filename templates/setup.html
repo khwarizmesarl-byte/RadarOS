@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup — RadarOS</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:2rem;width:100%;max-width:560px;}
+  .logo{text-align:center;margin-bottom:1.5rem;}
+  .logo img{height:32px;}
+  .logo h1{font-size:1rem;font-weight:700;margin-top:0.5rem;}
+  .logo p{font-size:0.72rem;color:#475569;}
+  .step{display:none;} .step.active{display:block;}
+  .step-dots{display:flex;justify-content:center;gap:6px;margin-bottom:1.5rem;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#1e293b;transition:all 0.2s;}
+  .dot.active{background:#6366f1;width:20px;border-radius:4px;}
+  .dot.done{background:#34d399;}
+  .btn{width:100%;background:#6366f1;color:#fff;border:none;border-radius:8px;padding:0.65rem;font-size:0.875rem;font-weight:600;cursor:pointer;margin-top:1rem;}
+  .btn:hover{background:#4f46e5;}
+  .btn:disabled{background:#334155;cursor:not-allowed;}
+  .btn-outline{background:transparent;border:1px solid #1e293b;color:#64748b;margin-top:0.4rem;}
+  .btn-outline:hover{background:#1e293b;color:#e2e8f0;}
+  .store-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem;max-height:360px;overflow-y:auto;}
+  .store-card{border:1px solid #1e293b;border-radius:8px;padding:0.65rem;cursor:pointer;transition:all 0.15s;position:relative;}
+  .store-card:hover{border-color:#6366f1;}
+  .store-card.selected{border-color:#6366f1;background:rgba(99,102,241,0.08);}
+  .store-card.locked{opacity:0.4;cursor:not-allowed;}
+  .store-card.tier2{border-color:#f59e0b22;}
+  .store-card.tier3{border-color:#ef444422;}
+  .store-name{font-size:0.78rem;font-weight:600;}
+  .store-meta{font-size:0.65rem;color:#475569;margin-top:3px;}
+  .store-tier{font-size:0.6rem;padding:1px 6px;border-radius:99px;display:inline-block;margin-top:3px;}
+  .tier-free{background:rgba(52,211,153,0.1);color:#34d399;}
+  .tier-paid{background:rgba(245,158,11,0.1);color:#f59e0b;}
+  .limit-bar{background:#1e293b;border-radius:99px;height:6px;margin-bottom:0.75rem;overflow:hidden;}
+  .limit-fill{height:100%;background:#6366f1;border-radius:99px;transition:width 0.3s;}
+  .limit-text{font-size:0.72rem;color:#64748b;margin-bottom:0.4rem;}
+  .section-label{font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin:0.75rem 0 0.4rem;}
+  .info{background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:#a5b4fc;margin-bottom:0.75rem;}
+  .warn{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:#fcd34d;margin-bottom:0.75rem;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'">
+    <h1>Welcome! Let's set up your account</h1>
+    <p>This takes about 2 minutes</p>
+  </div>
+
+  <div class="step-dots">
+    <div class="dot active" id="dot0"></div>
+    <div class="dot" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+  </div>
+
+  <!-- Step 0: Welcome & Plan Summary -->
+  <div class="step active" id="step0">
+    <div class="info" id="planInfo">Loading your plan...</div>
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.5rem;">What you get with your plan:</div>
+    <div id="featureList" style="font-size:0.78rem;color:#64748b;line-height:1.8;margin-bottom:1rem;"></div>
+    <button class="btn" onclick="nextStep()">Start Setup →</button>
+  </div>
+
+  <!-- Step 1: Select Local Stores -->
+  <div class="step" id="step1">
+    <div class="limit-text" id="limitText">Select up to <strong>3</strong> local stores</div>
+    <div class="limit-bar"><div class="limit-fill" id="limitFill" style="width:0%"></div></div>
+    <div id="localStoresSection">
+      <div class="section-label">🏪 Local Stores</div>
+      <div class="store-grid" id="localStoresGrid">Loading...</div>
+    </div>
+    <div id="officialStoresSection" style="display:none;">
+      <div class="section-label">🏭 Official Brands</div>
+      <div class="store-grid" id="officialStoresGrid"></div>
+    </div>
+    <div id="intlStoresSection" style="display:none;">
+      <div class="section-label">🌍 International</div>
+      <div class="store-grid" id="intlStoresGrid"></div>
+    </div>
+    <button class="btn" onclick="nextStep()" id="btn1" disabled>Continue →</button>
+    <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+  </div>
+
+  <!-- Step 2: Confirm -->
+  <div class="step" id="step2">
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;">Your setup summary</div>
+    <div id="setupSummary" class="info"></div>
+    <div style="font-size:0.75rem;color:#475569;margin-top:0.5rem;margin-bottom:1rem;">
+      You can change your store selection later from your account settings.
+    </div>
+    <button class="btn" onclick="completeSetup()" id="btn2">Launch BrickRadar →</button>
+    <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+  </div>
+</div>
+
+<script>
+let USER = null;
+let ALL_STORES = [];
+let SELECTED = [];
+let STORE_LIMIT = 3;
+let currentStep = 0;
+
+const FEATURE_LABELS = {
+  dashboard:'Dashboard access', stores:'Local stores', official:'Official brand stores',
+  international:'International stores', analytics:'Analytics & charts', advanced:'Advanced tools',
+  radarlist:'RadarList watchlist', store_requests:'Store requests', orders:'Order/quote requests',
+  ai_notifications:'AI notifications'
+};
+
+async function init() {
+  // Get user session
+  const me = await fetch('/api/user/me').then(r=>r.json()).catch(()=>null);
+  if (!me || me.error) { window.location.href='/login'; return; }
+  USER = me;
+
+  // Parse features
+  let features = {};
+  try { features = JSON.parse(me.features||'{}'); } catch(e){}
+
+  STORE_LIMIT = me.plan_name==='Free'?3 : me.plan_name==='Starter'?10 : me.plan_name==='Pro'?50 : -1;
+
+  // Show plan info
+  document.getElementById('planInfo').innerHTML =
+    `Welcome <strong>${me.name}</strong>! You're on the <strong style="color:#fcd34d">${me.plan_name}</strong> plan.`;
+
+  // Show features
+  document.getElementById('featureList').innerHTML = Object.entries(features)
+    .filter(([k,v])=>v && FEATURE_LABELS[k])
+    .map(([k])=>`<div>✓ ${FEATURE_LABELS[k]}</div>`).join('');
+
+  // Load stores
+  const stores = await fetch('/api/user/available-stores').then(r=>r.json()).catch(()=>[]);
+  ALL_STORES = stores;
+
+  // Render store grids
+  renderStores('local', 'localStoresGrid', features);
+  if (features.official) {
+    document.getElementById('officialStoresSection').style.display='block';
+    renderStores('official', 'officialStoresGrid', features);
+  }
+  if (features.international) {
+    document.getElementById('intlStoresSection').style.display='block';
+    renderStores('international', 'intlStoresGrid', features);
+  }
+}
+
+function renderStores(tier, gridId, features) {
+  const stores = ALL_STORES.filter(s=>s.source_type===tier);
+  const grid = document.getElementById(gridId);
+  if (!stores.length) { grid.innerHTML='<div style="color:#475569;font-size:0.78rem;grid-column:1/-1;">No stores available in your region yet.</div>'; return; }
+  grid.innerHTML = stores.map(s => {
+    const isFree = s.scrape_tier==='free' || !s.scrape_tier;
+    return `<div class="store-card ${isFree?'':'tier2'}" id="sc_${s.id}" onclick="toggleStore(${s.id})">
+      <div class="store-name">${s.name}</div>
+      <div class="store-meta">${s.country_code||''} ${s.platform||''}</div>
+      <span class="store-tier ${isFree?'tier-free':'tier-paid'}">${isFree?'Free':'$2/mo extra'}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleStore(id) {
+  const card = document.getElementById('sc_'+id);
+  const already = SELECTED.includes(id);
+  if (!already && STORE_LIMIT !== -1 && SELECTED.length >= STORE_LIMIT) {
+    card.classList.add('locked');
+    setTimeout(()=>card.classList.remove('locked'), 600);
+    return;
+  }
+  if (already) {
+    SELECTED = SELECTED.filter(x=>x!==id);
+    card.classList.remove('selected');
+  } else {
+    SELECTED.push(id);
+    card.classList.add('selected');
+  }
+  updateLimit();
+}
+
+function updateLimit() {
+  const max = STORE_LIMIT===-1?'∞':STORE_LIMIT;
+  const pct = STORE_LIMIT===-1?50:(SELECTED.length/STORE_LIMIT)*100;
+  document.getElementById('limitText').innerHTML = `Selected <strong>${SELECTED.length}</strong> of <strong>${max}</strong> stores`;
+  document.getElementById('limitFill').style.width = Math.min(pct,100)+'%';
+  document.getElementById('btn1').disabled = SELECTED.length===0;
+}
+
+function nextStep() {
+  if (currentStep===1) {
+    // Build summary
+    const names = SELECTED.map(id=>ALL_STORES.find(s=>s.id===id)?.name||'').filter(Boolean);
+    document.getElementById('setupSummary').innerHTML =
+      `<strong>Plan:</strong> ${USER.plan_name}<br>
+       <strong>Selected stores (${SELECTED.length}):</strong><br>
+       ${names.map(n=>`· ${n}`).join('<br>')}`;
+  }
+  document.getElementById('step'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.add('done');
+  currentStep++;
+  document.getElementById('step'+currentStep).classList.add('active');
+  document.getElementById('dot'+currentStep).classList.add('active');
+}
+
+function prevStep() {
+  document.getElementById('step'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.remove('active');
+  currentStep--;
+  document.getElementById('step'+currentStep).classList.add('active');
+  document.getElementById('dot'+currentStep).classList.remove('done');
+  document.getElementById('dot'+currentStep).classList.add('active');
+}
+
+async function completeSetup() {
+  const btn = document.getElementById('btn2');
+  btn.disabled=true; btn.textContent='Saving...';
+  const res = await fetch('/api/user/setup', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({store_ids: SELECTED})
+  });
+  const data = await res.json();
+  if (data.ok) window.location.href='/';
+  else { btn.disabled=false; btn.textContent='Launch BrickRadar →'; alert(data.error||'Setup failed'); }
+}
+
+init();
+</script>
+</body>
+</html>

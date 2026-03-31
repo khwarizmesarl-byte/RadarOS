@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — BrickRadar</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.5rem;background:#0f172a;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:100;}
+  .nav-left{display:flex;align-items:center;gap:0.75rem;}
+  .nav img{height:28px;}
+  .nav-title{font-size:0.85rem;font-weight:700;color:#e2e8f0;}
+  .nav-sub{font-size:0.65rem;color:#475569;margin-top:1px;}
+  .nav-links{display:flex;gap:0.25rem;}
+  .nav-link{padding:3px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;cursor:pointer;background:none;border:none;}
+  .nav-link:hover{background:rgba(99,102,241,0.12);color:#a5b4fc;}
+  .nav-link.active{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  .main{max-width:1200px;margin:0 auto;padding:1.5rem;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1.5rem;}
+  .kpi{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:1rem;}
+  .kpi-label{font-size:0.65rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
+  .kpi-val{font-size:1.6rem;font-weight:700;color:#e2e8f0;}
+  .kpi-sub{font-size:0.7rem;color:#334155;margin-top:0.2rem;}
+  .section{background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin-bottom:1rem;}
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.1rem;border-bottom:1px solid #1e293b;}
+  .section-title{font-size:0.8rem;font-weight:700;color:#e2e8f0;}
+  .section-body{padding:1rem;}
+  .tab-bar{display:flex;gap:0.25rem;padding:0.75rem 1.1rem 0;}
+  .tab{padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;color:#475569;cursor:pointer;border:none;background:none;}
+  .tab.active{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  th{text-align:left;padding:0.5rem 0.75rem;color:#334155;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #1e293b;}
+  td{padding:0.6rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:0.65rem;font-weight:700;}
+  .badge-pending{background:rgba(245,158,11,0.15);color:#fcd34d;}
+  .badge-approved{background:rgba(16,185,129,0.15);color:#34d399;}
+  .badge-rejected{background:rgba(239,68,68,0.15);color:#f87171;}
+  .badge-tier2{background:rgba(99,102,241,0.15);color:#a5b4fc;}
+  .badge-tier3{background:rgba(217,119,6,0.15);color:#fcd34d;}
+  .btn-sm{padding:3px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;cursor:pointer;border:none;}
+  .btn-approve{background:rgba(16,185,129,0.15);color:#34d399;}
+  .btn-reject{background:rgba(239,68,68,0.15);color:#f87171;}
+  .btn-primary{background:#6366f1;color:#fff;padding:6px 16px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;}
+  .btn-primary:hover{background:#4f46e5;}
+  input[type=number]{background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.8rem;width:80px;}
+  input[type=number]:focus{outline:none;border-color:#6366f1;}
+  .empty{text-align:center;color:#334155;padding:2rem;font-size:0.8rem;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-left">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'" style="height:28px;">
+    <div>
+      <div class="nav-title" style="color:#EEEDFE;">Admin Dashboard</div>
+      <div class="nav-sub" style="color:#534AB7;">RadarOS — Khwarizme</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showTab('requests')">Store Requests</button>
+    <button class="nav-link" onclick="showTab('users')">Users</button>
+    <button class="nav-link" onclick="showTab('invoices')">Invoices</button>
+    <button class="nav-link" onclick="showTab('payments')">Payments</button>
+    <button class="nav-link" onclick="showTab('pricing')">Plans & Pricing</button>
+    <button class="nav-link" onclick="showTab('stores')">Stores</button>
+    <button class="nav-link" onclick="showTab('stats')">Stats</button>
+    <a href="/" class="nav-link">← BrickRadar</a>
+    <a href="/admin/logout" class="nav-link" style="color:#f87171;">Logout</a>
+  </div>
+</nav>
+
+<div style="width:100%;overflow:hidden;border-bottom:1px solid #0f172a;">
+  <img src="/assets/radaros_banner.svg" style="width:100%;display:block;max-height:200px;object-fit:cover;" onerror="this.style.display='none'">
+</div>
+
+<div class="main">
+
+  <!-- KPI Row -->
+  <div class="kpi-grid" id="kpiRow">
+    <div class="kpi"><div class="kpi-label">Total Snapshots</div><div class="kpi-val" id="kTotal">—</div></div>
+    <div class="kpi"><div class="kpi-label">Active Stores</div><div class="kpi-val" id="kStores">—</div></div>
+    <div class="kpi"><div class="kpi-label">Pending Requests</div><div class="kpi-val" id="kPending" style="color:#fcd34d;">—</div></div>
+    <div class="kpi"><div class="kpi-label">Total Requests</div><div class="kpi-val" id="kRequests">—</div></div>
+    <div class="kpi"><div class="kpi-label">DB Size</div><div class="kpi-val" id="kDb">—</div><div class="kpi-sub">MB</div></div>
+    <div class="kpi"><div class="kpi-label">Total Users</div><div class="kpi-val" id="kUsers" style="color:#a5b4fc;">—</div></div>
+    <div class="kpi"><div class="kpi-label">Active Users</div><div class="kpi-val" id="kActiveUsers" style="color:#34d399;">—</div></div>
+    <div class="kpi"><div class="kpi-label">Revenue</div><div class="kpi-val" id="kRevenue" style="color:#fcd34d;">—</div></div>
+    <div class="kpi"><div class="kpi-label">Overdue</div><div class="kpi-val" id="kOverdue" style="color:#f87171;">—</div></div>
+  </div>
+
+  <!-- Store Requests Tab -->
+  <div id="tab-requests" class="section">
+    <div class="tab-bar">
+      <button class="tab active" onclick="filterRequests('')">All</button>
+      <button class="tab" onclick="filterRequests('pending')">Pending</button>
+      <button class="tab" onclick="filterRequests('approved')">Approved</button>
+      <button class="tab" onclick="filterRequests('rejected')">Rejected</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Store URL</th><th>Tier</th><th>Platform</th>
+            <th>Requested by</th><th>Date</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="requestsTable"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Plans & Pricing Tab -->
+  <div id="tab-pricing" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Subscription Plans</div>
+      <button class="btn-primary" onclick="showAddPlanModal()">+ New Plan</button>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table>
+        <thead><tr>
+          <th>Plan Name</th><th>Price/mo</th><th>Currency</th>
+          <th>Store Limit</th><th>Refresh Limit</th><th>Tier Access</th>
+          <th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="plansTable"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="section-header" style="margin-top:1rem;border-top:1px solid #1e293b;">
+      <div class="section-title">Scraping Tier Pricing</div>
+      <button class="btn-primary" onclick="savePricing()">Save Changes</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead><tr><th>Tier</th><th>Price (USD/mo)</th><th>Description</th></tr></thead>
+        <tbody id="pricingTable"><tr><td colspan="3" class="empty">Loading...</td></tr></tbody>
+      </table>
+      <div style="margin-top:0.75rem;font-size:0.72rem;color:#334155;">
+        Prices shown to users when requesting a premium store. Changes take effect immediately.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stores Tab -->
+  <div id="tab-stores" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">All Stores</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="filterModule" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Modules</option>
+          <option value="BrickRadar">BrickRadar</option>
+        </select>
+        <select id="filterTier" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Tiers</option>
+          <option value="local">Local</option>
+          <option value="official">Official</option>
+          <option value="international">International</option>
+        </select>
+        <select id="filterStatus" onchange="renderStoresTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <div id="storesGrouped"></div>
+    </div>
+  </div>
+
+  <!-- Users Tab -->
+  <div id="tab-users" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Users</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="filterUserStatus" onchange="loadUsersTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Status</option><option value="active">Active</option><option value="suspended">Suspended</option>
+        </select>
+        <select id="filterUserPlan" onchange="loadUsersTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All Plans</option>
+        </select>
+        <button class="btn-primary" onclick="showAddUserModal()">+ Add User</button>
+      </div>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table><thead><tr><th>Name</th><th>Email</th><th>Type</th><th>Plan</th><th>Status</th><th>Invoices</th><th>Overdue</th><th>Paid</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody id="usersTable"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- Invoices Tab -->
+  <div id="tab-invoices" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Invoices</div>
+      <div style="display:flex;gap:0.5rem;">
+        <select id="filterInvStatus" onchange="loadInvoicesTab()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:0.75rem;">
+          <option value="">All</option><option value="draft">Draft</option><option value="sent">Sent</option>
+          <option value="paid">Paid</option><option value="overdue">Overdue</option>
+        </select>
+        <button class="btn-primary" onclick="showCreateInvoiceModal()">+ Add Invoice</button>
+      </div>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table><thead><tr><th>Invoice #</th><th>User</th><th>Amount</th><th>Status</th><th>Due</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody id="invoicesTable"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- Payments Tab -->
+  <div id="tab-payments" class="section" style="display:none;">
+    <div class="section-header">
+      <div class="section-title">Payments</div>
+      <button class="btn-primary" onclick="showAddPaymentModal()">+ Add Payment</button>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table><thead><tr><th>Date</th><th>User</th><th>Invoice #</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
+      <tbody id="paymentsTable"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- Stats Tab -->
+  <div id="tab-stats" class="section" style="display:none;">
+    <div class="section-header"><div class="section-title">Database Stats</div></div>
+    <div class="section-body" id="statsBody">Loading...</div>
+  </div>
+
+</div>
+
+<script>
+function showToast(msg,type='error',duration=5000){
+  let el=document.getElementById('toastContainer');
+  if(!el){el=document.createElement('div');el.id='toastContainer';el.style.cssText='position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;max-width:380px;';document.body.appendChild(el);}
+  const colors={error:'#f87171',warning:'#fcd34d',success:'#34d399',info:'#a5b4fc'};
+  const bg={error:'rgba(239,68,68,0.12)',warning:'rgba(245,158,11,0.12)',success:'rgba(16,185,129,0.12)',info:'rgba(99,102,241,0.12)'};
+  const t=document.createElement('div');
+  t.style.cssText=`background:${bg[type]};border:1px solid ${colors[type]};border-radius:8px;padding:0.75rem 1rem;font-size:0.78rem;color:${colors[type]};display:flex;align-items:flex-start;gap:0.5rem;box-shadow:0 4px 20px rgba(0,0,0,0.4);`;
+  t.innerHTML=`<span style="flex:1;">${msg}</span><button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1rem;line-height:1;padding:0;">✕</button>`;
+  el.appendChild(t);if(duration>0)setTimeout(()=>t.remove(),duration);
+}
+const _origFetch=window.fetch;
+window.fetch=async function(...args){
+  try{
+    const res=await _origFetch(...args);
+    if(res.status===401){showToast('Session expired. <a href="/admin/login" style="color:#fcd34d;font-weight:600;">Login again →</a>','warning',0);return res;}
+    if(res.status>=500){showToast('Server error ('+res.status+'). Check logs.','error');return res;}
+    return res;
+  }catch(e){showToast('Network error: '+e.message,'error',0);throw e;}
+};
+window.addEventListener('unhandledrejection',e=>{if(e.reason?.message)showToast('Error: '+e.reason.message,'error');});
+let ALL_REQUESTS = [];
+let ALL_PRICING  = [];
+let ALL_PLANS    = [];
+let ALL_USERS    = [];
+
+function showTab(name) {
+  ['requests','users','invoices','payments','pricing','stores','stats'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (name==='stores')   loadStoresTab();
+  if (name==='stats')    loadStats();
+  if (name==='pricing')  loadPlansTab();
+  if (name==='users')    setTimeout(()=>loadUsersTab(),0);
+  if (name==='invoices') setTimeout(()=>loadInvoicesTab(),0);
+  if (name==='payments') setTimeout(()=>loadPaymentsTab(),0);
+}
+
+async function loadPlansTab() {
+  ALL_PLANS = await fetch('/api/admin/plans').then(r=>r.json());
+  const tb = document.getElementById('plansTable');
+  if (!ALL_PLANS.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No plans</td></tr>'; return; }
+  tb.innerHTML = ALL_PLANS.map(p => `
+    <tr>
+      <td style="font-weight:600;">${p.name}</td>
+      <td style="color:#fcd34d;">$${p.price}</td>
+      <td style="color:#64748b;">${p.currency}</td>
+      <td style="color:#64748b;">${p.store_limit==-1?'Unlimited':p.store_limit}</td>
+      <td style="color:#64748b;">${p.refresh_limit==-1?'Unlimited':p.refresh_limit}</td>
+      <td style="font-size:0.72rem;color:#94a3b8;">${p.tier_access}</td>
+      <td><span class="badge ${p.is_active?'badge-approved':'badge-rejected'}">${p.is_active?'Active':'Inactive'}</span></td>
+      <td style="display:flex;gap:4px;">
+        <button class="btn-sm" onclick="editPlan(${p.id})" style="background:rgba(99,102,241,0.15);color:#a5b4fc;">Edit</button>
+        <button class="btn-sm btn-reject" onclick="togglePlan(${p.id},${p.is_active})">${p.is_active?'Disable':'Enable'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+function showAddPlanModal() {
+  document.getElementById('planModalTitle').textContent = 'Add Plan';
+  document.getElementById('planId').value = '';
+  document.getElementById('planName').value = '';
+  document.getElementById('planPrice').value = '';
+  document.getElementById('planCurrency').value = 'USD';
+  document.getElementById('planStoreLimit').value = '3';
+  document.getElementById('planRefreshLimit').value = '1';
+  document.getElementById('planDesc').value = '';
+  document.getElementById('tierLocal').checked = true;
+  document.getElementById('tierOfficial').checked = false;
+  document.getElementById('tierIntl').checked = false;
+  document.getElementById('planModal').style.display = 'flex';
+}
+
+function editPlan(id) {
+  const p = ALL_PLANS.find(x=>x.id==id);
+  if (!p) return;
+  document.getElementById('planModalTitle').textContent = 'Edit Plan';
+  document.getElementById('planId').value = p.id;
+  document.getElementById('planName').value = p.name;
+  document.getElementById('planPrice').value = p.price;
+  document.getElementById('planCurrency').value = p.currency;
+  document.getElementById('planStoreLimit').value = p.store_limit;
+  document.getElementById('planRefreshLimit').value = p.refresh_limit;
+  document.getElementById('planDesc').value = p.description || '';
+  const tiers = (p.tier_access||'').split(',');
+  document.getElementById('tierLocal').checked    = tiers.includes('local');
+  document.getElementById('tierOfficial').checked = tiers.includes('official');
+  document.getElementById('tierIntl').checked     = tiers.includes('international');
+  document.getElementById('planModal').style.display = 'flex';
+}
+
+async function savePlan() {
+  const id       = document.getElementById('planId').value;
+  const planName = document.getElementById('planName').value.trim().toLowerCase();
+  const isBasic  = ['free','starter'].includes(planName);
+  if (isBasic) {
+    const warn = [];
+    if (document.getElementById('featAnalytics') && document.getElementById('featAnalytics').checked)  warn.push('Analytics');
+    if (document.getElementById('featAdvanced')  && document.getElementById('featAdvanced').checked)   warn.push('Advanced');
+    if (document.getElementById('featOrders')    && document.getElementById('featOrders').checked)     warn.push('Orders/Quotes');
+    if (document.getElementById('featAiNotif')   && document.getElementById('featAiNotif').checked)    warn.push('AI Notifications');
+    if (document.getElementById('planT2')        && document.getElementById('planT2').checked)         warn.push('Tier 2 Included');
+    if (document.getElementById('planT3')        && document.getElementById('planT3').checked)         warn.push('Tier 3 Included');
+    if (document.getElementById('tierIntl')      && document.getElementById('tierIntl').checked)       warn.push('International Stores');
+    if (warn.length) {
+      const ok = confirm('⚠ Warning: Enabling premium features on "' + document.getElementById('planName').value + '" plan:\n\n' + warn.map(f=>'  • '+f).join('\n') + '\n\nThis may not align with your pricing strategy. Continue?');
+      if (!ok) return;
+    }
+  }
+  const planIdVal = id;
+  const tiers = ['local','official','international'].filter(t=>document.getElementById('tier'+t.charAt(0).toUpperCase()+t.slice(1)+(t==='international'?'':'')  ).checked);
+  
+  // fix checkbox ids
+  const tierAccess = [
+    document.getElementById('tierLocal').checked ? 'local' : null,
+    document.getElementById('tierOfficial').checked ? 'official' : null,
+    document.getElementById('tierIntl').checked ? 'international' : null,
+  ].filter(Boolean).join(',');
+
+  const body = {
+    name:          document.getElementById('planName').value,
+    price:         parseFloat(document.getElementById('planPrice').value)||0,
+    currency:      document.getElementById('planCurrency').value,
+    store_limit:   parseInt(document.getElementById('planStoreLimit').value)||-1,
+    refresh_limit: parseInt(document.getElementById('planRefreshLimit').value)||-1,
+    tier_access:   tierAccess,
+    description:   document.getElementById('planDesc').value,
+  };
+  const url    = planIdVal ? `/api/admin/plans/${planIdVal}` : '/api/admin/plans';
+  const method = planIdVal ? 'PUT' : 'POST';
+  const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if (data.ok) { document.getElementById('planModal').style.display='none'; loadPlansTab(); }
+  else alert(data.error||'Failed');
+}
+
+async function togglePlan(id, current) {
+  await fetch(`/api/admin/plans/${id}/status`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:current?0:1})});
+  loadPlansTab();
+}
+
+let _detailUserId=null;
+async function openUserDetail(userId){
+  _detailUserId=userId;
+  if(!ALL_PLANS.length) ALL_PLANS=await fetch('/api/admin/plans').then(r=>r.json());
+  const s=await fetch(`/api/admin/user/${userId}/summary`).then(r=>r.json());
+  const u=s.user||{};
+  document.getElementById('detailUserName').textContent=u.name||'';
+  document.getElementById('detailUserEmail').textContent=u.email||'';
+  document.getElementById('detailCurrentPlan').textContent=u.plan_name||'Free';
+  document.getElementById('detailPlanPrice').textContent=u.plan_price?`$${u.plan_price}/mo`:'Free';
+  document.getElementById('detailBilled').textContent=`$${(s.total_billed||0).toFixed(2)}`;
+  document.getElementById('detailPaid').textContent=`$${(s.total_paid||0).toFixed(2)}`;
+  document.getElementById('detailBalance').textContent=`$${(s.balance||0).toFixed(2)}`;
+  document.getElementById('detailNewPlan').innerHTML=ALL_PLANS.filter(p=>p.id!=u.plan_id).map(p=>`<option value="${p.id}">${p.name} — $${p.price}/mo</option>`).join('');
+  const ic={draft:'#475569',sent:'#a5b4fc',paid:'#34d399',overdue:'#f87171'};
+  document.getElementById('detailInvoices').innerHTML=s.invoices?.length?`<table style="width:100%;font-size:0.72rem;border-collapse:collapse;"><tr style="color:#475569;"><th style="text-align:left;padding:3px 6px;">Invoice</th><th>Amount</th><th>Status</th><th>Due</th></tr>${s.invoices.map(i=>`<tr style="border-top:1px solid #1e293b;"><td style="padding:3px 6px;color:#a5b4fc;">${i.invoice_number}</td><td style="padding:3px 6px;">$${(i.amount||0).toFixed(2)}</td><td style="padding:3px 6px;color:${ic[i.status]||'#64748b'}">${i.status}</td><td style="padding:3px 6px;color:#64748b;">${i.due_date||'—'}</td></tr>`).join('')}</table>`:'<div style="color:#334155;font-size:0.75rem;">No invoices yet</div>';
+  document.getElementById('userDetailModal').style.display='flex';
+}
+async function requestPlanChange(){
+  const planId=document.getElementById('detailNewPlan').value;
+  if(!planId||!_detailUserId){showToast('Select a plan first','warning');return;}
+  const plan=ALL_PLANS.find(p=>p.id==planId);
+  const res=await fetch(`/api/admin/users/${_detailUserId}/request-plan-change`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_id:planId})});
+  const d=await res.json();
+  if(d.ok){showToast(`Draft invoice ${d.invoice_number} created for change to ${plan?.name}. Review in Invoices tab.`,'warning',8000);document.getElementById('userDetailModal').style.display='none';loadUsersTab();checkDraftInvoices();}
+  else showToast(d.error||'Failed','error');
+}
+async function checkDraftInvoices(){
+  try{
+    const invs=await fetch('/api/admin/invoices?status=draft').then(r=>r.json());
+    const alert=document.getElementById('draftInvoiceAlert');
+    const cnt=document.getElementById('draftCount');
+    if(Array.isArray(invs)&&invs.length>0){if(cnt)cnt.textContent=invs.length;if(alert)alert.style.display='flex';}
+    else{if(alert)alert.style.display='none';}
+  }catch(e){}
+}
+async function init() {
+  checkDraftInvoices();
+  // Load stats
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  document.getElementById('kTotal').textContent    = stats.total_snapshots.toLocaleString();
+  document.getElementById('kStores').textContent   = stats.total_stores;
+  document.getElementById('kPending').textContent  = stats.pending_requests;
+  document.getElementById('kRequests').textContent = stats.total_requests;
+  document.getElementById('kDb').textContent       = stats.db_size_mb;
+  if(document.getElementById('kUsers'))       document.getElementById('kUsers').textContent      = stats.total_users||0;
+  if(document.getElementById('kActiveUsers')) document.getElementById('kActiveUsers').textContent = stats.active_users||0;
+  if(document.getElementById('kRevenue'))     document.getElementById('kRevenue').textContent    = '$'+(stats.total_revenue||0).toFixed(2);
+  if(document.getElementById('kOverdue'))     document.getElementById('kOverdue').textContent    = stats.overdue_invoices||0;
+
+  // Load requests
+  ALL_REQUESTS = await fetch('/api/admin/requests').then(r=>r.json());
+  renderRequests(ALL_REQUESTS);
+
+  // Load pricing
+  ALL_PRICING = await fetch('/api/admin/pricing').then(r=>r.json());
+  renderPricing(ALL_PRICING);
+  // Populate plan filter
+  const planFilter = document.getElementById('filterUserPlan');
+  if(planFilter) ALL_PLANS.forEach(p=>{if(!planFilter.querySelector(`option[value="${p.id}"]`))planFilter.add(new Option(p.name,p.id));});
+}
+
+function filterRequests(status) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  const filtered = status ? ALL_REQUESTS.filter(r=>r.status===status) : ALL_REQUESTS;
+  renderRequests(filtered);
+}
+
+function renderRequests(rows) {
+  const tb = document.getElementById('requestsTable');
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No requests found</td></tr>'; return; }
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td style="color:#334155;">${r.id}</td>
+      <td><a href="${r.url}" target="_blank" style="color:#a5b4fc;text-decoration:none;font-size:0.72rem;">${r.url.replace('https://','').substring(0,40)}</a></td>
+      <td><span class="badge badge-${r.tier}">${r.tier} · $${r.tier_cost}/mo</span></td>
+      <td style="color:#64748b;">${r.platform||'—'} / ${r.block_type||'—'}</td>
+      <td>
+        <div style="font-size:0.78rem;">${r.name||'—'}</div>
+        <div style="font-size:0.68rem;color:#475569;">${r.email}</div>
+      </td>
+      <td style="color:#475569;font-size:0.72rem;">${(r.created_at||'').substring(0,10)}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td>
+        ${r.status==='pending' ? `
+          <button class="btn-sm btn-approve" onclick="updateRequest(${r.id},'approved')">✓ Approve</button>
+          <button class="btn-sm btn-reject" onclick="updateRequest(${r.id},'rejected')" style="margin-left:4px;">✕ Reject</button>
+        ` : `<span style="font-size:0.7rem;color:#334155;">${r.status}</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updateRequest(id, status) {
+  await fetch(`/api/admin/requests/${id}/status`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  });
+  ALL_REQUESTS = await fetch('/api/admin/requests').then(r=>r.json());
+  renderRequests(ALL_REQUESTS);
+  // Refresh pending count
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  document.getElementById('kPending').textContent = stats.pending_requests;
+}
+
+function renderPricing(rows) {
+  document.getElementById('pricingTable').innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="badge badge-${r.tier}">${r.tier}</span></td>
+      <td><input type="number" step="0.5" min="0" value="${r.price}" id="price_${r.tier}"></td>
+      <td style="color:#64748b;font-size:0.78rem;">${r.description}</td>
+    </tr>
+  `).join('');
+}
+
+async function savePricing() {
+  const updated = ALL_PRICING.map(r => ({
+    tier: r.tier,
+    price: parseFloat(document.getElementById('price_'+r.tier).value) || r.price,
+    description: r.description
+  }));
+  await fetch('/api/admin/pricing', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(updated)
+  });
+  ALL_PRICING = updated;
+  alert('Pricing updated successfully.');
+}
+
+let ALL_STORES = [];
+
+async function loadStoresTab() {
+  ALL_STORES = await fetch('/api/stores').then(r=>r.json());
+  renderStoresTab();
+}
+
+function renderStoresTab() {
+  const filterModule = document.getElementById('filterModule').value;
+  const filterTier   = document.getElementById('filterTier').value;
+  const filterStatus = document.getElementById('filterStatus').value;
+  const modules = {'BrickRadar':{color:'#a5b4fc',bg:'rgba(99,102,241,0.06)'}};
+  const tiers = [
+    {key:'local',         label:'🏪 Local',          color:'#a5b4fc', bg:'rgba(99,102,241,0.08)'},
+    {key:'official',      label:'🏭 Official Brands', color:'#fcd34d', bg:'rgba(217,119,6,0.08)'},
+    {key:'international', label:'🌍 International',   color:'#34d399', bg:'rgba(16,185,129,0.08)'},
+  ];
+  const moduleList = filterModule ? [filterModule] : ['BrickRadar'];
+  let html = '';
+  moduleList.forEach(mod => {
+    const mc = modules[mod]||{color:'#94a3b8',bg:'rgba(100,116,139,0.06)'};
+    html += `<div style="padding:0.6rem 1rem;background:${mc.bg};border-bottom:1px solid #1e293b;font-size:0.72rem;font-weight:700;color:${mc.color};letter-spacing:0.06em;">${mod}</div>`;
+    const tierList = filterTier ? tiers.filter(t=>t.key===filterTier) : tiers;
+    tierList.forEach(tier => {
+      let stores = ALL_STORES.filter(s=>s.source_type===tier.key);
+      if (filterStatus==='active')   stores = stores.filter(s=>s.enabled);
+      if (filterStatus==='disabled') stores = stores.filter(s=>!s.enabled);
+      if (!stores.length) return;
+      html += `<div style="padding:0.4rem 1rem 0.4rem 1.5rem;background:${tier.bg};border-bottom:1px solid #1e293b;font-size:0.65rem;font-weight:700;color:${tier.color};text-transform:uppercase;letter-spacing:0.08em;">
+        ${tier.label} — ${stores.length} store${stores.length>1?'s':''}
+      </div>
+      <table style="margin-bottom:0;"><thead><tr>
+        <th style="padding-left:2rem;">Store</th><th>Platform</th><th>Country</th><th>Currency</th><th>Snapshots</th><th>Status</th>
+      </tr></thead><tbody>`;
+      stores.forEach(s => {
+        html += `<tr>
+          <td style="font-weight:600;padding-left:2rem;">${s.name}</td>
+          <td style="color:#64748b;">${s.platform||'—'}</td>
+          <td style="color:#64748b;">${s.country_code||'—'}</td>
+          <td style="color:#64748b;">${s.currency||'—'}</td>
+          <td style="color:#64748b;">${(s.snapshot_count||0).toLocaleString()}</td>
+          <td><span class="badge ${s.enabled?'badge-approved':'badge-rejected'}">${s.enabled?'Active':'Disabled'}</span></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    });
+  });
+  if (!html) html = '<div class="empty">No stores match filters</div>';
+  document.getElementById('storesGrouped').innerHTML = html;
+}
+
+async function loadStats() {
+  const stats = await fetch('/api/admin/stats').then(r=>r.json());
+  const byTier = stats.snapshots_by_tier || {};
+  document.getElementById('statsBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+      <div>
+        <div style="font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Snapshots by Tier</div>
+        ${Object.entries(byTier).map(([t,c])=>`
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e293b;font-size:0.78rem;">
+            <span style="color:#94a3b8;">${t}</span>
+            <span style="font-weight:600;">${c.toLocaleString()}</span>
+          </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Database</div>
+        <div style="font-size:0.78rem;color:#94a3b8;">Size: <strong style="color:#e2e8f0;">${stats.db_size_mb} MB</strong></div>
+        <div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">Path: <code style="color:#6366f1;font-size:0.68rem;">lego_tracker.sqlite3</code></div>
+      </div>
+    </div>
+  `;
+}
+
+init();
+</script>
+
+<!-- Plan Modal -->
+<div id="planModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:460px;max-height:90vh;overflow-y:auto;">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:1rem;" id="planModalTitle">Plan</div>
+    <input type="hidden" id="planId">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Plan Name</label>
+        <input id="planName" type="text" placeholder="e.g. Pro" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Price / month</label>
+        <input id="planPrice" type="number" step="0.5" min="0" placeholder="0" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Currency</label>
+        <select id="planCurrency" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+          <option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SAR</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Store Limit (-1 = unlimited)</label>
+        <input id="planStoreLimit" type="number" min="-1" placeholder="3" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div>
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Refresh Limit/day (-1 = unlimited)</label>
+        <input id="planRefreshLimit" type="number" min="-1" placeholder="1" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:6px;">Tier Access</label>
+        <div style="display:flex;gap:1rem;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierLocal"> 🏪 Local</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierOfficial"> 🏭 Official</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;"><input type="checkbox" id="tierIntl"> 🌍 International</label>
+        </div>
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Description</label>
+        <textarea id="planDesc" rows="2" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;resize:none;"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('planModal').style.display='none'" style="background:#1e293b;color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+      <button onclick="savePlan()" class="btn-primary">Save Plan</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modals -->
+<div id="addUserModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:380px;">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:1rem;">Add User</div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <input id="newUserName" type="text" placeholder="Full name" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:8px;color:#e2e8f0;font-size:0.8rem;">
+      <input id="newUserEmail" type="email" placeholder="Email" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:8px;color:#e2e8f0;font-size:0.8rem;">
+      <input id="newUserPwd" type="password" placeholder="Password (optional)" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:8px;color:#e2e8f0;font-size:0.8rem;">
+      <select id="newUserPlan" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:8px;color:#e2e8f0;font-size:0.8rem;"></select>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('addUserModal').style.display='none'" style="background:#1e293b;color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+      <button onclick="addUser()" class="btn-primary">Add User</button>
+    </div>
+  </div>
+</div>
+<div id="createInvoiceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:1rem;">Add Invoice</div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <label style="font-size:0.7rem;color:#64748b;">Search User</label>
+      <div style="display:flex;gap:0.4rem;">
+        <input id="invUserSearch" type="text" placeholder="Name, email or plan..." oninput="filterInvUsers()" style="flex:1;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.78rem;">
+        <select id="invPlanFilter" onchange="filterInvUsers()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.75rem;"><option value="">All Plans</option></select>
+      </div>
+      <select id="invUserId" size="3" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px;color:#e2e8f0;font-size:0.75rem;height:72px;"></select>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.5rem;">
+        <div><label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Amount</label><input id="invAmount" type="number" step="0.01" min="0" placeholder="0.00" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"></div>
+        <div><label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Currency</label><select id="invCurrency" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SAR</option></select></div>
+      </div>
+      <label style="font-size:0.7rem;color:#64748b;">Due Date</label>
+      <input id="invDueDate" type="date" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      <label style="font-size:0.7rem;color:#64748b;">Notes</label>
+      <textarea id="invNotes" rows="2" placeholder="e.g. Monthly Pro plan subscription" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;resize:none;"></textarea>
+      <label style="font-size:0.7rem;color:#64748b;">Status</label>
+      <select id="invStatus" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"><option value="draft">Draft</option><option value="sent">Send immediately to user</option></select>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('createInvoiceModal').style.display='none'" style="background:#1e293b;color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+      <button onclick="createInvoice()" class="btn-primary">Create Invoice</button>
+    </div>
+  </div>
+</div>
+<div id="addPaymentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="font-size:0.85rem;font-weight:700;margin-bottom:1rem;">Add Payment</div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <label style="font-size:0.7rem;color:#64748b;">Search User</label>
+      <div style="display:flex;gap:0.4rem;">
+        <input id="payUserSearch" type="text" placeholder="Name, email or plan..." oninput="filterPayUsers()" style="flex:1;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.78rem;">
+        <select id="payPlanFilter" onchange="filterPayUsers()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.75rem;"><option value="">All Plans</option></select>
+      </div>
+      <select id="payUserId" size="3" onchange="loadUserInvoices()" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:4px;color:#e2e8f0;font-size:0.75rem;height:72px;"></select>
+      <label style="font-size:0.7rem;color:#64748b;">Invoice</label>
+      <select id="payInvId" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"></select>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.5rem;">
+        <div><label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Amount</label><input id="payAmount" type="number" step="0.01" min="0" placeholder="0.00" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"></div>
+        <div><label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:3px;">Currency</label><select id="payCurrency" style="width:100%;background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SAR</option></select></div>
+      </div>
+      <label style="font-size:0.7rem;color:#64748b;">Payment Date</label>
+      <input id="payDate" type="date" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+      <label style="font-size:0.7rem;color:#64748b;">Method</label>
+      <select id="payMethod" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"><option value="bank_transfer">Bank Transfer</option><option value="cash">Cash</option><option value="stripe">Stripe</option><option value="paypal">PayPal</option><option value="other">Other</option></select>
+      <label style="font-size:0.7rem;color:#64748b;">Reference</label>
+      <input id="payRef" type="text" placeholder="e.g. TXN-2026-001" style="background:#020817;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;">
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button onclick="document.getElementById('addPaymentModal').style.display='none'" style="background:#1e293b;color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+      <button onclick="addPayment()" class="btn-primary">Add Payment</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let ALL_USERS = [];
+
+async function loadUsersTab() {
+  const status  = document.getElementById('filterUserStatus').value;
+  const plan_id = document.getElementById('filterUserPlan').value;
+  const params  = new URLSearchParams();
+  if (status)  params.append('status', status);
+  if (plan_id) params.append('plan_id', plan_id);
+  const users = await fetch('/api/admin/users?'+params).then(r=>r.json());
+  ALL_USERS = Array.isArray(users) ? users : [];
+  const planColors = {Free:'#475569',Starter:'#a5b4fc',Pro:'#fcd34d',Premium:'#34d399'};
+  const tb = document.getElementById('usersTable');
+  if (!ALL_USERS.length){tb.innerHTML='<tr><td colspan="10" class="empty">No users</td></tr>';return;}
+  tb.innerHTML = ALL_USERS.map(u=>`<tr>
+    <td style="font-weight:600;">${u.name}</td>
+    <td style="color:#64748b;font-size:0.72rem;">${u.email}</td>
+    <td><span class="badge" style="background:${u.registration_type==='self'?'rgba(16,185,129,0.15)':'rgba(99,102,241,0.15)'};color:${u.registration_type==='self'?'#34d399':'#a5b4fc'}">${u.registration_type==='self'?'Self':'Manual'}</span></td>
+    <td><span style="font-weight:600;color:${planColors[u.plan_name]||'#94a3b8'}">${u.plan_name||'—'}</span></td>
+    <td style="display:none"><select onchange="changePlan(${u.id},this.value)" style="background:#020817;border:1px solid #1e293b;border-radius:4px;padding:2px 6px;color:${planColors[u.plan_name]||'#94a3b8'};font-size:0.72rem;">
+      ${ALL_PLANS.map(p=>`<option value="${p.id}" ${p.id==u.plan_id?'selected':''}>${p.name} $${p.price}/mo</option>`).join('')}
+    </select></td>
+    <td><span class="badge ${u.status==='active'?'badge-approved':'badge-pending'}">${u.status}</span></td>
+    <td style="color:#64748b;">${u.invoice_count||0}</td>
+    <td style="color:${(u.overdue_count||0)>0?'#f87171':'#64748b'};">${u.overdue_count||0}</td>
+    <td style="color:#34d399;">$${(u.total_paid||0).toFixed(2)}</td>
+    <td style="color:#475569;font-size:0.7rem;">${(u.created_at||'').substring(0,10)}</td>
+    <td style="display:flex;gap:4px;">
+      ${u.status==='active'?`<button class="btn-sm btn-reject" onclick="changeUserStatus(${u.id},'suspended')">Suspend</button>`:`<button class="btn-sm btn-approve" onclick="changeUserStatus(${u.id},'active')">Activate</button>`}
+      <button class="btn-sm" onclick="deleteUser(${u.id},'${u.name}')" style="background:rgba(239,68,68,0.1);color:#f87171;">Del</button>
+    </td>
+  </tr>`).join('');
+}
+async function changePlan(uid,pid){await fetch(`/api/admin/users/${uid}/plan`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_id:pid})});loadUsersTab();}
+async function changeUserStatus(uid,status){await fetch(`/api/admin/users/${uid}/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});loadUsersTab();}
+async function deleteUser(uid,name){if(!confirm(`Delete ${name}?`))return;await fetch(`/api/admin/users/${uid}`,{method:'DELETE'});loadUsersTab();}
+async function showAddUserModal(){
+  if(!ALL_PLANS.length) ALL_PLANS=await fetch('/api/admin/plans').then(r=>r.json());
+  document.getElementById('newUserPlan').innerHTML=ALL_PLANS.map(p=>`<option value="${p.id}">${p.name} — $${p.price}/mo</option>`).join('');
+  document.getElementById('addUserModal').style.display='flex';
+}
+async function addUser(){
+  const res=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    name:document.getElementById('newUserName').value.trim(),
+    email:document.getElementById('newUserEmail').value.trim(),
+    password:document.getElementById('newUserPwd').value,
+    plan_id:document.getElementById('newUserPlan').value
+  })});
+  const d=await res.json();
+  if(d.ok){document.getElementById('addUserModal').style.display='none';loadUsersTab();}
+  else alert(d.error||'Failed');
+}
+async function loadInvoicesTab(){
+  const status=document.getElementById('filterInvStatus').value;
+  const params=new URLSearchParams();if(status)params.append('status',status);
+  const invs=await fetch('/api/admin/invoices?'+params).then(r=>r.json());
+  const sc={draft:'#475569',sent:'#a5b4fc',paid:'#34d399',overdue:'#f87171',cancelled:'#334155'};
+  const tb=document.getElementById('invoicesTable');
+  if(!invs.length){tb.innerHTML='<tr><td colspan="7" class="empty">No invoices</td></tr>';return;}
+  tb.innerHTML=invs.map(i=>`<tr>
+    <td style="color:#a5b4fc;font-size:0.72rem;">${i.invoice_number}</td>
+    <td><div>${i.user_name||'—'}</div><div style="font-size:0.68rem;color:#475569;">${i.user_email||''}</div></td>
+    <td style="font-weight:600;">$${(i.amount||0).toFixed(2)}</td>
+    <td><span class="badge" style="background:${(sc[i.status]||'#475569')+'22'};color:${sc[i.status]||'#94a3b8'}">${i.status}</span></td>
+    <td style="color:#64748b;font-size:0.72rem;">${i.due_date||'—'}</td>
+    <td style="color:#475569;font-size:0.72rem;">${(i.created_at||'').substring(0,10)}</td>
+    <td style="display:flex;gap:4px;">
+      ${i.status==='draft'?`<button class="btn-sm btn-approve" onclick="updateInvoice(${i.id},'sent')">Send</button>`:''}
+      ${i.status==='sent'?`<button class="btn-sm btn-approve" onclick="updateInvoice(${i.id},'paid')">Paid</button>`:''}
+      ${i.status==='sent'?`<button class="btn-sm btn-reject" onclick="updateInvoice(${i.id},'overdue')">Overdue</button>`:''}
+      ${(i.status==='paid'||i.status==='sent')?`<button class="btn-sm" onclick="returnInvoice(${i.id},'${i.invoice_number}',${i.amount})" style="background:rgba(245,158,11,0.1);color:#fcd34d;">Return</button>`:''}
+    </td>
+  </tr>`).join('');
+}
+async function returnInvoice(id, invNum, amount) {
+  if(!confirm(`Return invoice ${invNum}?\nThis will create a credit note of $${amount} deducted from user balance.\n\nContinue?`)) return;
+  const res = await fetch(`/api/admin/invoices/${id}/return`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+  const d = await res.json();
+  if(d.ok) { showToast(`Return processed. Credit note ${d.credit_note} created.`,'success'); loadInvoicesTab(); }
+  else showToast(d.error||'Failed','error');
+}
+async function updateInvoice(id,status){await fetch(`/api/admin/invoices/${id}/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});loadInvoicesTab();}
+async function showCreateInvoiceModal(){
+  if(!ALL_USERS.length)ALL_USERS=await fetch('/api/admin/users').then(r=>r.json());
+  document.getElementById('invUserId').innerHTML=ALL_USERS.map(u=>`<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+  document.getElementById('createInvoiceModal').style.display='flex';
+}
+async function createInvoice(){
+  const uid=document.getElementById('invUserId')?.value;
+  if(!uid){showToast('Please select a user','warning');return;}
+  const res=await fetch('/api/admin/invoices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    user_id:uid,
+    amount:document.getElementById('invAmount')?.value,
+    currency:document.getElementById('invCurrency')?.value||'USD',
+    due_date:document.getElementById('invDueDate')?.value,
+    notes:document.getElementById('invNotes')?.value,
+    status:document.getElementById('invStatus')?.value
+  })});
+  const d=await res.json();
+  if(d.ok){document.getElementById('createInvoiceModal').style.display='none';loadInvoicesTab();showToast('Invoice created','success');}
+  else showToast(d.error||'Failed','error');
+}
+async function loadPaymentsTab(){
+  const pays=await fetch('/api/admin/payments').then(r=>r.json());
+  const tb=document.getElementById('paymentsTable');
+  if(!pays.length){tb.innerHTML='<tr><td colspan="6" class="empty">No payments</td></tr>';return;}
+  tb.innerHTML=pays.map(p=>`<tr>
+    <td style="color:#475569;font-size:0.72rem;">${(p.created_at||'').substring(0,10)}</td>
+    <td><div>${p.user_name||'—'}</div><div style="font-size:0.68rem;color:#475569;">${p.user_email||''}</div></td>
+    <td style="color:#a5b4fc;font-size:0.72rem;">${p.invoice_number||'—'}</td>
+    <td style="font-weight:600;color:#34d399;">$${(p.amount||0).toFixed(2)}</td>
+    <td style="color:#64748b;">${p.method||'—'}</td>
+    <td style="color:#475569;font-size:0.72rem;">${p.reference||'—'}</td>
+  </tr>`).join('');
+}
+async function showAddPaymentModal(){
+  if(!ALL_USERS.length) ALL_USERS=await fetch('/api/admin/users').then(r=>r.json());
+  if(!ALL_PLANS.length) ALL_PLANS=await fetch('/api/admin/plans').then(r=>r.json());
+  const pf=document.getElementById('payPlanFilter');
+  if(pf&&pf.options.length<=1) ALL_PLANS.forEach(p=>pf.add(new Option(p.name,p.id)));
+  renderPayUsers(ALL_USERS);
+  const pd=document.getElementById('payDate'); if(pd) pd.value=new Date().toISOString().substring(0,10);
+  const s=document.getElementById('payUserSearch'); if(s) s.value='';
+  document.getElementById('addPaymentModal').style.display='flex';
+  loadUserInvoices();
+}
+function renderPayUsers(users){
+  const sel=document.getElementById('payUserId');
+  if(!sel) return;
+  sel.innerHTML=users.map(u=>`<option value="${u.id}">${u.name} · ${u.email} · ${u.plan_name||'—'}</option>`).join('');
+}
+function filterPayUsers(){
+  const q=(document.getElementById('payUserSearch')?.value||'').toLowerCase();
+  const pid=document.getElementById('payPlanFilter')?.value||'';
+  renderPayUsers(ALL_USERS.filter(u=>
+    (!q||u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q)) &&
+    (!pid||u.plan_id==pid)
+  ));
+  loadUserInvoices();
+}
+async function loadUserInvoices(){
+  const uid=document.getElementById('payUserId').value;
+  const invs=await fetch(`/api/admin/invoices?user_id=${uid}&status=sent`).then(r=>r.json());
+  document.getElementById('payInvId').innerHTML=invs.length?invs.map(i=>`<option value="${i.id}">${i.invoice_number} — $${i.amount}</option>`).join(''):'<option value="">No open invoices</option>';
+}
+async function addPayment(){
+  const res=await fetch('/api/admin/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    user_id:document.getElementById('payUserId').value,invoice_id:document.getElementById('payInvId').value,
+    amount:document.getElementById('payAmount').value,method:document.getElementById('payMethod').value,
+    reference:document.getElementById('payRef').value
+  })});
+  const r=await res.json();
+  if(r.ok){document.getElementById('addPaymentModal').style.display='none';loadPaymentsTab();}
+}
+</script>
+
+<div id="draftInvoiceAlert" style="display:none;position:fixed;top:52px;left:0;right:0;background:rgba(245,158,11,0.12);border-bottom:1px solid rgba(245,158,11,0.25);padding:0.5rem 1.5rem;z-index:500;align-items:center;gap:0.75rem;">
+  <span style="color:#fcd34d;font-size:0.8rem;">⚠ You have <strong id="draftCount">0</strong> draft invoice(s) awaiting review.</span>
+  <button onclick="document.querySelector('[onclick*=invoices]').click()" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:2px 10px;color:#fcd34d;font-size:0.72rem;cursor:pointer;">Review →</button>
+  <button onclick="document.getElementById('draftInvoiceAlert').style.display='none'" style="background:none;border:none;color:#64748b;cursor:pointer;margin-left:auto;">✕</button>
+</div>
+<div id="userDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:400;align-items:flex-start;justify-content:center;padding-top:2rem;overflow-y:auto;">
+  <div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1.5rem;width:560px;margin-bottom:2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div><div style="font-size:0.9rem;font-weight:700;" id="detailUserName"></div><div style="font-size:0.72rem;color:#475569;" id="detailUserEmail"></div></div>
+      <button onclick="document.getElementById('userDetailModal').style.display='none'" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div style="background:#020817;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.06em;">Current Plan</div>
+      <div style="display:flex;justify-content:space-between;"><span id="detailCurrentPlan" style="font-size:0.85rem;font-weight:700;color:#fcd34d;"></span><span id="detailPlanPrice" style="font-size:0.78rem;color:#64748b;"></span></div>
+    </div>
+    <div style="background:#020817;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.06em;">Change Plan</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <select id="detailNewPlan" style="flex:1;background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:7px;color:#e2e8f0;font-size:0.8rem;"></select>
+        <button onclick="requestPlanChange()" class="btn-primary" style="white-space:nowrap;">Change Plan →</button>
+      </div>
+      <div style="font-size:0.68rem;color:#475569;margin-top:0.4rem;">A draft invoice will be created for admin review before the plan changes.</div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.06em;">Invoices</div>
+      <div id="detailInvoices"></div>
+    </div>
+    <div style="background:#020817;border:1px solid #1e293b;border-radius:8px;padding:0.75rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;text-align:center;">
+      <div><div style="font-size:0.65rem;color:#64748b;">Total Billed</div><div id="detailBilled" style="font-size:0.85rem;font-weight:700;color:#a5b4fc;"></div></div>
+      <div><div style="font-size:0.65rem;color:#64748b;">Total Paid</div><div id="detailPaid" style="font-size:0.85rem;font-weight:700;color:#34d399;"></div></div>
+      <div><div style="font-size:0.65rem;color:#64748b;">Balance Due</div><div id="detailBalance" style="font-size:0.85rem;font-weight:700;color:#f87171;"></div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

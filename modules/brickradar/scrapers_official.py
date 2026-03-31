@@ -40,12 +40,187 @@ def fetch_cada() -> Dict[str, Dict[str, Any]]:
     return result
 
 
+# ── Generic ueeshop scraper (Reobrix and similar) ─────────────────────────────
+
+def fetch_ueeshop_store(store_name: str, base_url: str,
+                        max_pages: int = 200, db_path: str = None) -> Dict[str, Dict[str, Any]]:
+    """
+    Scrape any ueeshop-based store (e.g. Reobrix).
+    Strategy:
+      1. Paginate /products/?page=N to collect all product slugs
+      2. Fetch each /products/{slug} and extract schema.org JSON
+    Uses rotating pagination if db_path provided (stores last_page in meta).
+    """
+    import httpx as _httpx
+    import json as _json
+    import re as _re
+    from core.utils import safe_float, extract_item_number, compute_discount_pct
+
+    base_url  = base_url.rstrip("/")
+    headers   = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    meta_key  = f"{store_name.lower().replace(' ','_')}_last_page"
+    out: Dict[str, Dict[str, Any]] = {}
+
+    # Load last page from DB meta
+    start_page = 1
+    if db_path:
+        try:
+            import sqlite3 as _sq
+            conn = _sq.connect(db_path)
+            row  = conn.execute("SELECT v FROM meta WHERE k=?", (meta_key,)).fetchone()
+            conn.close()
+            if row:
+                start_page = int(row[0]) + 1
+        except: pass
+
+    pages_per_run = 10  # fetch 10 pages (200 products) per run
+    end_page      = start_page + pages_per_run - 1
+    all_slugs: list = []
+    seen_slugs: set = set()
+    last_page_scraped = start_page - 1
+
+    print(f"[{store_name}] collecting slugs pages {start_page}–{end_page}...")
+
+    with _httpx.Client(timeout=20, follow_redirects=True, headers=headers) as client:
+        for page in range(start_page, end_page + 1):
+            try:
+                r = client.get(f"{base_url}/products/?page={page}")
+                if r.status_code != 200:
+                    break
+                slugs = set(_re.findall(r"href=[\"'][^\"']*?/products/([\w-]+)[\"']", r.text))
+                slugs = {s for s in slugs if s and '.' not in s}
+                if not slugs:
+                    # Reached end — reset to page 1 for next run
+                    print(f"[{store_name}] reached end at page {page} — resetting to page 0")
+                    last_page_scraped = 0
+                    break
+                new_slugs = slugs - seen_slugs
+                if not new_slugs:
+                    print(f"[{store_name}] duplicate page {page} — resetting")
+                    last_page_scraped = 0
+                    break
+                seen_slugs |= slugs
+                all_slugs.extend(new_slugs)
+                last_page_scraped = page
+            except Exception as e:
+                print(f"[{store_name}] page {page} error: {e}")
+                break
+
+        print(f"[{store_name}] scraping {len(all_slugs)} product pages...")
+        for slug in all_slugs:
+            try:
+                r = client.get(f"{base_url}/products/{slug}")
+                if r.status_code != 200:
+                    continue
+                # Extract schema.org JSON
+                m = _re.search(
+                    r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+                    r.text, _re.DOTALL
+                )
+                if not m:
+                    # fallback: any script with "sku" and "price"
+                    for s in _re.findall(r'<script[^>]*>(.*?)</script>', r.text, _re.DOTALL):
+                        if '"sku"' in s and '"price"' in s:
+                            m = type('M', (), {'group': lambda self, n: s})()
+                            break
+                if not m:
+                    continue
+
+                try:
+                    data = _json.loads(m.group(1))
+                except:
+                    continue
+
+                # Handle @graph array
+                if isinstance(data, list):
+                    data = next((d for d in data if d.get('@type') == 'Product'), data[0] if data else {})
+                elif data.get('@graph'):
+                    data = next((d for d in data['@graph'] if d.get('@type') == 'Product'), {})
+
+                if data.get('@type') != 'Product':
+                    continue
+
+                title    = data.get('name', '').strip()
+                sku      = data.get('sku', '') or data.get('productID', '') or slug
+                url      = data.get('url', f"{base_url}/products/{slug}")
+                images   = data.get('image', [])
+                image    = images[0] if isinstance(images, list) and images else (images if isinstance(images, str) else '')
+
+                # Price from offers
+                offers   = data.get('offers', {})
+                if isinstance(offers, list):
+                    offers = offers[0] if offers else {}
+                price    = safe_float(str(offers.get('price', 0)))
+                currency = offers.get('priceCurrency', 'USD')
+                avail    = 'In stock' if 'InStock' in str(offers.get('availability', '')) else 'Out of stock'
+
+                # Category from description
+                desc     = data.get('description', '')
+                category = ''
+                cat_m    = _re.search(r'(?:Dealer|Category|Series)\s*:\s*([^\n<]+)', desc)
+                if cat_m:
+                    category = cat_m.group(1).strip()
+
+                item_n = extract_item_number(title) or extract_item_number(sku) or sku
+
+                out[item_n] = {
+                    'item_number': item_n,
+                    'title':       title,
+                    'theme':       category,
+                    'category':    category,
+                    'brand':       store_name,
+                    'image_url':   image,
+                    'compare_at':  0.0,
+                    'stores': {
+                        store_name: StoreOffer(
+                            price=price,
+                            availability=avail,
+                            link=url,
+                            discount_pct=0.0,
+                        )
+                    },
+                }
+            except Exception as e:
+                print(f"[{store_name}] slug={slug} error: {e}")
+
+    print(f"[{store_name}] scraped {len(out)} products (pages {start_page}–{last_page_scraped})")
+
+    # Save last page to DB meta
+    if db_path and last_page_scraped > 0:
+        try:
+            import sqlite3 as _sq
+            conn = _sq.connect(db_path)
+            conn.execute("INSERT OR REPLACE INTO meta(k,v) VALUES (?,?)",
+                         (meta_key, str(last_page_scraped)))
+            conn.commit()
+            conn.close()
+        except: pass
+
+    return out
+
+
 # ── Mould King Official (WooCommerce) ─────────────────────────────────────────
 
-def fetch_mouldking() -> Dict[str, Dict[str, Any]]:
-    """Scrape Mould King WooCommerce store via public REST API."""
+def fetch_mouldking(db_path: str = None) -> Dict[str, Dict[str, Any]]:
+    """
+    Scrape Mould King WooCommerce store via public REST API.
+    Uses rotating pagination — each call starts where the last left off,
+    so the full catalog is refreshed incrementally across multiple runs.
+    """
     out: Dict[str, Dict[str, Any]] = {}
     store_name = "Mould King"
+    PAGE_BATCH = 20   # 2000 products per run
+
+    # Determine start page from meta
+    start_page = 1
+    if db_path:
+        try:
+            from core.db import meta_get, meta_set
+            last = meta_get(db_path, "mould_king_last_page")
+            if last:
+                start_page = int(last) + 1
+        except Exception:
+            pass
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -53,18 +228,24 @@ def fetch_mouldking() -> Dict[str, Dict[str, Any]]:
     }
 
     with httpx.Client(timeout=30, follow_redirects=True, headers=headers) as client:
-        page = 1
-        while True:
+        page = start_page
+        pages_done = 0
+        reset = False
+
+        while pages_done < PAGE_BATCH:
             try:
                 r = client.get(
                     "https://mouldking.store/wp-json/wc/store/v1/products",
                     params={"per_page": 100, "page": page},
                 )
                 if r.status_code != 200:
-                    print(f"[Mould King] API {r.status_code} on page {page}")
+                    print(f"[Mould King] API {r.status_code} on page {page} — resetting to page 1")
+                    reset = True
                     break
                 products = r.json()
                 if not products:
+                    print(f"[Mould King] reached end at page {page} — resetting to page 1")
+                    reset = True
                     break
 
                 for prod in products:
@@ -108,15 +289,22 @@ def fetch_mouldking() -> Dict[str, Dict[str, Any]]:
                     }
 
                 print(f"[Mould King] page {page}: {len(products)} products")
-                if len(products) < 100:
-                    break
+                pages_done += 1
                 page += 1
 
             except Exception as e:
                 print(f"[Mould King] error page {page}: {e}")
                 break
 
-    print(f"[Mould King] scraped {len(out)} products")
+    # Save last page to meta so next run continues from here
+    if db_path:
+        try:
+            from core.db import meta_set
+            meta_set(db_path, "mould_king_last_page", str(0 if reset else page - 1))
+        except Exception:
+            pass
+
+    print(f"[Mould King] scraped {len(out)} products (pages {start_page}–{page-1})")
     return out
 
 
@@ -134,108 +322,124 @@ LEGO_COM_HEADERS = {
 LEGO_COM_API = "https://www.lego.com/api/4.0/en-US/products/search"
 
 
-def fetch_lego_com(max_products: int = 500) -> Dict[str, Dict[str, Any]]:
+def fetch_lego_com(db_path: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Scrape LEGO.com via their product search API.
-    Returns USD prices from the US store as the official MSRP reference.
+    Fetch LEGO Official catalog via Brickset API v3.
+    Returns sets with US retail price from LEGOCom.US.retailPrice.
+    Requires API_KEYS["brickset"] in config.py.
+    Uses rotating year pagination to avoid hammering the API.
     """
+    import httpx as _httpx
+    from datetime import datetime as _dt
+    from modules.brickradar.config import API_KEYS
+
+    api_key = API_KEYS.get("brickset", "").strip()
+    if not api_key:
+        print("[LEGO Official] No Brickset API key — set API_KEYS['brickset'] in config.py")
+        return {}
+
+    store_name  = "LEGO Official"
+    meta_key    = "lego_brickset_last_year"
+    current_year = _dt.now().year
+
+    # Rotating year — scrape one year per run
+    start_year = current_year
+    if db_path:
+        try:
+            import sqlite3 as _sq
+            conn = _sq.connect(db_path)
+            row  = conn.execute("SELECT v FROM meta WHERE k=?", (meta_key,)).fetchone()
+            conn.close()
+            if row:
+                last = int(row[0])
+                start_year = last - 1 if last > current_year - 5 else current_year
+        except: pass
+
     out: Dict[str, Dict[str, Any]] = {}
-    store_name = "LEGO Official"
+    base = "https://brickset.com/api/v3.asmx/getSets"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    params = {
-        "offset":   0,
-        "limit":    24,
-        "sort":     "RELEVANCE",
-        "category": "",
-    }
+    print(f"[LEGO Official] fetching sets year={start_year} via Brickset API...")
 
-    with httpx.Client(
-        timeout=30,
-        follow_redirects=True,
-        headers=LEGO_COM_HEADERS,
-    ) as client:
-
-        # First try the API endpoint
+    page = 1
+    while True:
+        params = {
+            "apiKey":   api_key,
+            "userHash": "",
+            "params":   f'{{"year":"{start_year}","pageSize":500,"pageNumber":{page},"orderBy":"Number"}}',
+        }
         try:
-            r = client.get(LEGO_COM_API, params={**params, "limit": 24, "offset": 0})
-            if r.status_code == 200:
-                data = r.json()
-                total = data.get("total", 0)
-                print(f"[LEGO Official] API total: {total} products")
+            import httpx as _httpx
+            r = _httpx.post(base, data=params, headers=headers, timeout=30)
+            if r.status_code != 200:
+                print(f"[LEGO Official] API error: {r.status_code}")
+                break
+            data = r.json()
+            sets = data.get("sets", [])
+            if not sets:
+                break
 
-                all_products = data.get("results") or []
+            for s in sets:
+                # Skip non-retail / no price
+                lego_com  = s.get("LEGOCom", {}) or {}
+                us        = lego_com.get("US", {}) or {}
+                price     = us.get("retailPrice")
+                if not price:
+                    continue
 
-                # Paginate
-                offset = 24
-                while offset < min(total, max_products):
-                    r2 = client.get(LEGO_COM_API, params={**params, "limit": 24, "offset": offset})
-                    if r2.status_code != 200:
-                        break
-                    page_data = r2.json()
-                    page_products = page_data.get("results") or []
-                    if not page_products:
-                        break
-                    all_products.extend(page_products)
-                    offset += 24
+                number    = s.get("number", "")
+                variant   = s.get("numberVariant", 1)
+                item_n    = f"{number}-{variant}" if variant and variant != 1 else number
+                title     = s.get("name", "").strip()
+                theme     = s.get("theme", "")
+                subtheme  = s.get("subtheme", "")
+                image     = (s.get("image") or {}).get("imageURL", "")
+                url       = s.get("bricksetURL", f"https://brickset.com/sets/{item_n}")
+                avail     = s.get("availability", "")
+                in_stock  = avail.lower() not in ("discontinued", "retired", "") if avail else True
 
-                for prod in all_products:
-                    item_number = str(prod.get("productCode") or prod.get("itemNumber") or "").strip()
-                    if not item_number:
-                        continue
+                out[item_n] = {
+                    "item_number": item_n,
+                    "title":       title,
+                    "theme":       theme,
+                    "category":    subtheme or theme,
+                    "brand":       "LEGO",
+                    "image_url":   image,
+                    "compare_at":  0.0,
+                    "stores": {
+                        store_name: StoreOffer(
+                            price=float(price),
+                            availability="In stock" if in_stock else "Out of stock",
+                            link=url,
+                            discount_pct=0.0,
+                        )
+                    },
+                }
 
-                    title       = (prod.get("name") or "").strip()
-                    theme       = (prod.get("themeName") or prod.get("theme") or "").strip()
-                    price_info  = prod.get("price") or {}
-                    price       = safe_float(price_info.get("formattedAmount", "").replace("$", "").replace(",", ""))
-                    if price is None:
-                        price = safe_float(price_info.get("amount"))
-
-                    images     = prod.get("images") or []
-                    image_url  = ""
-                    if images:
-                        image_url = (images[0].get("url") or images[0].get("src") or "").strip()
-                        if image_url and not image_url.startswith("http"):
-                            image_url = "https:" + image_url
-
-                    link = f"https://www.lego.com/en-us/product/{prod.get('slug') or item_number}"
-
-                    avail_text  = (prod.get("availability") or {}).get("status") or ""
-                    availability = "In stock" if "available" in avail_text.lower() else "Out of stock" if avail_text else "N/A"
-
-                    out[item_number] = {
-                        "item_number": item_number,
-                        "title":       title,
-                        "theme":       theme,
-                        "category":    "LEGO",
-                        "image_url":   image_url,
-                        "image_list":  [image_url] if image_url else [],
-                        "vendor":      "LEGO",
-                        "brand":       "LEGO",
-                        "compare_at":  None,
-                        "is_new":      False,
-                        "stores": {
-                            store_name: StoreOffer(
-                                price=price,
-                                availability=availability,
-                                link=link,
-                                discount_pct=None,
-                            )
-                        },
-                    }
-
-                print(f"[LEGO Official] scraped {len(out)} products via API")
-                return out
+            # Check if more pages
+            total   = data.get("matches", 0)
+            fetched = page * 500
+            if fetched >= total:
+                break
+            page += 1
 
         except Exception as e:
-            print(f"[LEGO Official] API error: {e} — trying fallback")
+            print(f"[LEGO Official] error: {e}")
+            break
 
-        # Fallback: scrape category pages via HTML
+    print(f"[LEGO Official] scraped {len(out)} sets (year={start_year})")
+
+    # Save year to meta
+    if db_path and out:
         try:
-            out = _fetch_lego_com_html(client, store_name, max_products)
-        except Exception as e:
-            print(f"[LEGO Official] HTML fallback error: {e}")
+            import sqlite3 as _sq
+            conn = _sq.connect(db_path)
+            conn.execute("INSERT OR REPLACE INTO meta(k,v) VALUES (?,?)",
+                         (meta_key, str(start_year)))
+            conn.commit()
+            conn.close()
+        except: pass
 
-    print(f"[LEGO Official] total scraped: {len(out)}")
     return out
 
 
@@ -418,26 +622,129 @@ def fetch_bricklink_prices(set_numbers: list) -> Dict[str, Dict[str, Any]]:
 
 # ── Official store dispatcher ──────────────────────────────────────────────────
 
-def fetch_official_stores(progress_fn=None) -> list:
+def fetch_store_by_platform(name: str, base_url: str, platform: str,
+                              collection_slug: str = "", db_path: str = None,
+                              vat_multiplier: float = 1.0, lego_only: bool = False) -> Dict[str, Dict[str, Any]]:
     """
-    Fetch all official brand sources (Tier 1).
-    Returns list of catalogs.
+    Generic scraper dispatcher — routes to the right scraper based on platform.
+    Works for ANY store in DB — no hardcoding per store.
+    """
+    platform = (platform or "").lower().strip()
+
+    if platform == "shopify":
+        return fetch_shopify_store(
+            store_name=name,
+            base_url=base_url,
+            vat_multiplier=vat_multiplier,
+            collection_slug=collection_slug or "",
+            lego_only=lego_only,
+            normalize_theme_fn=None,
+        )
+    elif platform == "woocommerce":
+        if name == "Mould King":
+            return fetch_mouldking(db_path)
+        return _fetch_woocommerce_generic(name, base_url)
+    elif platform == "ueeshop":
+        return fetch_ueeshop_store(name, base_url, db_path=db_path)
+    elif platform == "lego_com":
+        return fetch_lego_com(db_path=db_path)
+    else:
+        print(f"[{name}] platform '{platform}' has no scraper yet")
+        return {}
+
+
+def _fetch_woocommerce_generic(name: str, base_url: str) -> Dict[str, Dict[str, Any]]:
+    """Generic WooCommerce scraper via wp-json/wc/store/v1/products."""
+    import httpx
+    from core.utils import safe_float, extract_item_number, compute_discount_pct
+
+    out: Dict[str, Dict[str, Any]] = {}
+    base_url = base_url.rstrip("/")
+    headers  = {"User-Agent": "Mozilla/5.0"}
+
+    with httpx.Client(timeout=30.0, follow_redirects=True, headers=headers) as client:
+        for page in range(1, 100):
+            url = f"{base_url}/wp-json/wc/store/v1/products?per_page=100&page={page}&status=publish"
+            try:
+                r = client.get(url)
+                if r.status_code != 200:
+                    break
+                items = r.json()
+                if not items:
+                    break
+                for p in items:
+                    title  = (p.get("name") or "").strip()
+                    sku    = (p.get("sku") or "").strip()
+                    item_n = sku or extract_item_number(title) or str(p.get("id", ""))
+                    price  = safe_float(p.get("prices", {}).get("price", 0)) / 100
+                    old_p  = safe_float(p.get("prices", {}).get("regular_price", 0)) / 100
+                    link   = p.get("permalink") or ""
+                    image  = (p.get("images") or [{}])[0].get("src", "")
+                    avail  = "In stock" if p.get("is_in_stock") else "Out of stock"
+                    disc   = compute_discount_pct(old_p, price)
+                    out[item_n] = {
+                        "item_number": item_n,
+                        "title": title,
+                        "theme": (p.get("categories") or [{}])[0].get("name", ""),
+                        "category": (p.get("categories") or [{}])[0].get("name", ""),
+                        "brand": name,
+                        "image_url": image,
+                        "compare_at": old_p,
+                        "stores": {
+                            name: StoreOffer(price=price, availability=avail, link=link, discount_pct=disc)
+                        },
+                    }
+            except Exception as e:
+                print(f"[{name}] page {page} error: {e}")
+                break
+    print(f"[{name}] scraped {len(out)} products")
+    return out
+
+
+def fetch_official_stores(db_path: str = None, store_filter: str = None, progress_fn=None) -> list:
+    """
+    Generic DB-driven official store scraper.
+    Reads all enabled official stores from DB, routes each by platform.
+    store_filter: scrape only this store name (None = all).
     """
     catalogs = []
-
-    for name, fn in [("CaDA Official", fetch_cada), ("Mould King", fetch_mouldking)]:
-        if progress_fn:
-            progress_fn(f"Scraping {name} (official)…")
+    if db_path:
         try:
-            catalogs.append(fn())
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur  = conn.cursor()
+            cur.execute("SELECT name, base_url, platform, collection_slug, vat_multiplier, lego_only FROM stores WHERE source_type='official' AND enabled=1")
+            db_stores = [dict(r) for r in cur.fetchall()]
+            conn.close()
+        except Exception as e:
+            print(f"[fetch_official_stores] DB error: {e}")
+            db_stores = []
+    else:
+        db_stores = [
+            {"name": "CaDA Official",  "base_url": "https://www.cada-official.com", "platform": "shopify",     "collection_slug": "", "vat_multiplier": 1.0, "lego_only": False},
+            {"name": "Mould King",     "base_url": "https://www.mouldkingblock.com","platform": "woocommerce", "collection_slug": "", "vat_multiplier": 1.0, "lego_only": False},
+            {"name": "Reobrix Official","base_url": "https://www.reobrix.com",       "platform": "ueeshop",     "collection_slug": "", "vat_multiplier": 1.0, "lego_only": False},
+        ]
+
+    for s in db_stores:
+        name = s["name"]
+        if store_filter and name != store_filter:
+            continue
+        if progress_fn:
+            progress_fn(f"Scraping {name}…")
+        try:
+            catalog = fetch_store_by_platform(
+                name=name,
+                base_url=s["base_url"],
+                platform=s["platform"],
+                collection_slug=s.get("collection_slug") or "",
+                db_path=db_path,
+                vat_multiplier=float(s.get("vat_multiplier") or 1.0),
+                lego_only=bool(s.get("lego_only")),
+            )
+            if catalog:
+                catalogs.append(catalog)
         except Exception as e:
             print(f"[{name}] ERROR: {e}")
-
-    if progress_fn:
-        progress_fn("Scraping LEGO Official…")
-    try:
-        catalogs.append(fetch_lego_com())
-    except Exception as e:
-        print(f"[LEGO Official] ERROR: {e}")
-
     return catalogs

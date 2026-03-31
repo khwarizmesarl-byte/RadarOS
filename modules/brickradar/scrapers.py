@@ -46,13 +46,13 @@ def normalize_theme_category_from_shopify(prod: dict) -> tuple:
     for candidate in [product_type] + tags:
         for theme in LEGO_THEMES:
             if theme.lower() == candidate.lower():
-                return theme, "LEGO"
+                return theme, product_type or "Other"
 
     for theme in LEGO_THEMES:
         if theme.lower() in title.lower():
-            return theme, "LEGO"
+            return theme, product_type or "Other"
 
-    return product_type or "Other", "LEGO"
+    return product_type or "Other", product_type or "Other"
 
 
 def normalize_theme_category_from_playone(title: str) -> tuple:
@@ -60,8 +60,8 @@ def normalize_theme_category_from_playone(title: str) -> tuple:
     t = title.lower()
     for theme in LEGO_THEMES:
         if theme.lower() in t:
-            return theme, "LEGO"
-    return "Other", "LEGO"
+            return theme, theme
+    return "Other", "Other"
 
 
 # ── BRICKSHOP (WooCommerce) ────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ def fetch_brickshop() -> Dict[str, Dict[str, Any]]:
                         "item_number": item_number,
                         "title":       title,
                         "theme":       theme_name,
-                        "category":    "LEGO",
+                        "category":    theme_name,
                         "image_url":   image_url,
                         "image_list":  image_list[:4],
                         "vendor":      "BRICKSHOP",

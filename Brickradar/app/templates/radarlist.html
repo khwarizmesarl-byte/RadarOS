@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/theme.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>RadarList — BrickRadar</title>
+  <style>
+    :root{--bg:#080c14;--surf:#0d1420;--bord:rgba(99,102,241,0.13);--bord2:rgba(99,102,241,0.35);--text:#e2e8f0;--muted:#475569;--acc:#6366f1;--acc2:#8b5cf6;}
+    *{box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;margin:0;padding:0;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+    .nav{padding:.9rem 1.5rem;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;background:var(--surf);}
+    .nav a{color:var(--muted);font-size:.78rem;text-decoration:none;} .nav a:hover{color:var(--text);}
+    .main{max-width:1400px;margin:0 auto;padding:1.5rem;}
+    .card{background:var(--surf);border:1px solid var(--bord);border-radius:12px;overflow:hidden;margin-bottom:1rem;}
+    .card:hover{border-color:var(--bord2);}
+    .badge{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.61rem;font-weight:600;font-family:'JetBrains Mono',monospace;}
+    .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+    .empty{text-align:center;padding:5rem 2rem;color:var(--muted);}
+    .empty-icon{font-size:3rem;margin-bottom:1rem;opacity:0.3;}
+    .theme-btn.active{border-color:var(--acc,#6366f1)!important;box-shadow:0 0 0 2px var(--acc,#6366f1);}
+    .drop-badge{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:.15rem .5rem;font-size:.65rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+    .rise-badge{background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:.15rem .5rem;font-size:.65rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+    .price-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.35rem;}
+    .store-price{display:inline-flex;align-items:center;gap:.3rem;background:rgba(99,102,241,0.06);border:1px solid var(--bord);border-radius:6px;padding:.2rem .5rem;font-size:.68rem;}
+    .store-price.cheapest{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);}
+    @media(max-width:768px){.grid-cols-radar{grid-template-columns:1fr!important;}}
+  </style>
+</head>
+<body>
+
+<div class="nav">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <a href="/">← Dashboard</a>
+    <span style="color:#1e293b">|</span>
+    <span style="font-weight:700;font-size:1rem;">⊙ RadarList</span>
+    <span id="totalCount" class="mono" style="font-size:.7rem;color:var(--muted);"></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <span id="dropCount" style="font-size:.75rem;color:#6ee7b7;display:none;"></span>
+    <div id="themeSwitcher" style="display:flex;align-items:center;gap:4px;"></div>
+    <div id="userNavArea" style="display:none;align-items:center;gap:0.4rem;">
+      <span id="userNavName" style="font-size:0.7rem;color:#a5b4fc;font-weight:600;"></span>
+      <span id="userNavPlan" style="font-size:0.62rem;padding:1px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;"></span>
+      <a href="/account" style="font-size:0.7rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;">Account</a>
+      <a href="/api/user/logout" style="font-size:0.7rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;">Logout</a>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="loading" style="text-align:center;padding:4rem;color:var(--muted);">Loading RadarList…</div>
+  <div id="emptyState" style="display:none" class="empty">
+    <div class="empty-icon">◎</div>
+    <div style="font-size:1.1rem;font-weight:600;margin-bottom:.5rem">Your RadarList is empty</div>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:1.5rem">Click the ◎ icon next to any item in the dashboard to add it here</div>
+    <a href="/" style="background:var(--acc);color:#fff;border-radius:8px;padding:.5rem 1.5rem;text-decoration:none;font-weight:600;font-size:.85rem;">Go to Dashboard</a>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="statsBar" style="display:none;display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem;">
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div>
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">On Radar</div>
+      <div id="statTotal" class="mono" style="font-size:1.6rem;font-weight:700">—</div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Price Drops</div>
+      <div id="statDrops" class="mono" style="font-size:1.6rem;font-weight:700;color:#10b981">—</div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#f59e0b,#ef4444)"></div>
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Best Saving</div>
+      <div id="statBest" class="mono" style="font-size:1.6rem;font-weight:700;color:#f59e0b">—</div>
+    </div>
+    <div style="background:var(--surf);border:1px solid var(--bord);border-radius:10px;padding:1rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#06b6d4,#6366f1)"></div>
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.3rem">Total Saved</div>
+      <div id="statSaved" class="mono" style="font-size:1.6rem;font-weight:700;color:#06b6d4">—</div>
+    </div>
+  </div>
+
+  <!-- Items grid -->
+  <div id="radarGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;"></div>
+</div>
+
+<script>
+const SC={'Brickmania':'#6366f1','BRICKSHOP':'#10b981','Bricking':'#f59e0b','PlayOne':'#ef4444','KLAPTAP':'#8b5cf6','Joueclubliban':'#06b6d4','Thetoystorelb':'#ec4899'};
+const sc=s=>SC[s]||'#64748b';
+const $f=v=>v!=null?'$'+Number(v).toFixed(2):'—';
+
+async function loadRadarList() {
+  try {
+    const items = await fetch('/api/radarlist').then(r => r.json());
+    document.getElementById('loading').style.display = 'none';
+
+    if (!items.length) {
+      document.getElementById('emptyState').style.display = 'block';
+      return;
+    }
+
+    // Stats
+    const drops = items.filter(i => i.price_drop > 0);
+    const totalSaved = drops.reduce((s, i) => s + i.price_drop, 0);
+    const bestDrop = drops.length ? Math.max(...drops.map(i => i.price_drop)) : 0;
+
+    document.getElementById('statsBar').style.display = 'grid';
+    document.getElementById('statTotal').textContent = items.length;
+    document.getElementById('statDrops').textContent = drops.length;
+    document.getElementById('statBest').textContent = bestDrop > 0 ? '$'+bestDrop.toFixed(2) : '—';
+    document.getElementById('statSaved').textContent = totalSaved > 0 ? '$'+totalSaved.toFixed(2) : '—';
+    document.getElementById('totalCount').textContent = items.length + ' items';
+    if (drops.length) {
+      const el = document.getElementById('dropCount');
+      el.textContent = '↓ ' + drops.length + ' price drop' + (drops.length > 1 ? 's' : '');
+      el.style.display = 'inline';
+    }
+
+    // Grid
+    const grid = document.getElementById('radarGrid');
+    grid.innerHTML = items.map(item => {
+      const hasDrop = item.price_drop > 0;
+      const hasRise = item.price_drop < 0;
+      const prices = item.current_prices || [];
+
+      const storePills = prices.map(p => `
+        <span class="store-price${p.price === item.min_price ? ' cheapest' : ''}">
+          <span class="dot" style="background:${sc(p.store)};width:6px;height:6px;"></span>
+          <span style="color:${p.price === item.min_price ? '#6ee7b7' : '#94a3b8'};font-weight:${p.price === item.min_price ? 700 : 400}">${p.store}</span>
+          <span class="mono" style="color:${p.price === item.min_price ? '#6ee7b7' : '#e2e8f0'};font-weight:${p.price === item.min_price ? 700 : 400}">${$f(p.price)}</span>
+        </span>`).join('');
+
+      return `
+      <div class="card" style="padding:1rem;">
+        <div style="display:flex;gap:.75rem;align-items:flex-start;">
+          ${item.image_url ? `<img src="${item.image_url}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--bord);flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:64px;height:64px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;">◎</div>`}
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.25rem;flex-wrap:wrap;">
+              <span class="mono" style="font-size:.68rem;color:#a5b4fc;">${item.item_number}</span>
+              ${item.brand ? `<span class="badge" style="background:rgba(99,102,241,.12);color:#a5b4fc">${item.brand}</span>` : ''}
+              ${hasDrop ? `<span class="drop-badge">↓ $${item.price_drop.toFixed(2)} (${item.price_drop_pct}%)</span>` : ''}
+              ${hasRise ? `<span class="rise-badge">↑ $${Math.abs(item.price_drop).toFixed(2)}</span>` : ''}
+            </div>
+            <div style="font-size:.82rem;font-weight:600;line-height:1.3;margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.title}">${item.title || '—'}</div>
+            <div style="font-size:.68rem;color:var(--muted);">
+              Added ${item.added_at ? item.added_at.slice(0,10) : '—'}
+              ${item.added_price ? ` · was ${$f(item.added_price)} @ ${item.added_store||'?'}` : ''}
+            </div>
+          </div>
+          <button onclick="removeFromRadar('${item.item_number}', this)"
+            style="background:none;border:none;cursor:pointer;color:#334155;font-size:1.1rem;padding:.25rem;flex-shrink:0;transition:all .15s;"
+            onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#334155'"
+            title="Remove from RadarList">⊙</button>
+        </div>
+        ${prices.length ? `<div class="price-row">${storePills}</div>` : '<div style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">No current prices found</div>'}
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div style="color:#fca5a5">Failed to load RadarList</div>';
+  }
+}
+
+async function removeFromRadar(itemNumber, btn) {
+  await fetch('/api/radarlist/remove', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({item_number: itemNumber})
+  });
+  btn.closest('.card').style.opacity = '0';
+  btn.closest('.card').style.transition = 'opacity 0.3s';
+  setTimeout(() => { btn.closest('.card').remove(); loadRadarList(); }, 300);
+}
+
+loadRadarList();
+</script>
+  <script src="/static/ai_assistant.js"></script>
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    if (ctx.logged_in) {
+      const a = document.getElementById('userNavArea');
+      if (a) {
+        a.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+    }
+    const f = ctx.features || {};
+    // Gate settings and DB tools for free plan
+    const featureGates = [
+      {href:'/official',key:'official'},{href:'/international',key:'international'},
+      {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      {href:'/analytics/official',key:'analytics'},{href:'/analytics/international',key:'analytics'},
+    ];
+    document.querySelectorAll('a[href]').forEach(a => {
+      const gate = featureGates.find(g=>a.getAttribute('href')===g.href);
+      if (!gate||f[gate.key]) return;
+      a.style.opacity='0.35'; a.style.cursor='not-allowed';
+      a.addEventListener('click',e=>{
+        e.preventDefault();
+        if(confirm('This feature requires a higher plan.\nGo to your account to upgrade?'))
+          window.location.href='/account';
+      });
+    });
+    // Gate settings and DB tools buttons for free/starter
+    if (ctx.logged_in && ['Free','Starter'].includes(ctx.plan_name)) {
+      document.querySelectorAll('[data-gate="settings"],[data-gate="dbtools"]').forEach(el=>{
+        el.style.opacity='0.35'; el.style.cursor='not-allowed';
+        el.addEventListener('click',e=>{
+          e.preventDefault(); e.stopPropagation();
+          alert('This feature requires Pro or Premium plan.');
+        });
+      });
+    }
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
+</body>
+</html>

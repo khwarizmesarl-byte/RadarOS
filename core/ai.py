@@ -288,17 +288,42 @@ async def stream_discover_stores(
     hardcoded_store_domains: list,
     anthropic_api_key: str,
     groq_api_key: str,
+    tier: str = "local",
+    country: str = "",
 ) -> AsyncGenerator[str, None]:
     """Yield SSE chunks: DuckDuckGo search + AI filtering for new stores."""
     use_groq = not anthropic_api_key and bool(groq_api_key)
 
+    # Build country-aware search location string
+    country_names = {
+        "AE": "UAE Dubai", "SA": "Saudi Arabia", "KW": "Kuwait",
+        "TR": "Turkey", "DE": "Germany", "GB": "UK", "CN": "China",
+        "LB": "Lebanon", "US": "US global",
+    }
+    search_location = country_names.get(country, region) if country else region
+
     try:
         yield f"data: {json.dumps({'text': '', 'status': 'searching'})}\n\n"
 
-        queries = [
-            f"LEGO store online shop {region} buy sets",
-            f"toy store {region} LEGO official retailer website",
-        ]
+        # Build tier-aware queries
+        if tier == "official":
+            queries = [
+                f"LEGO compatible official brand store online shop",
+                f"CaDA Mould King Cada official website store",
+                f"brick building sets official brand online store",
+            ]
+        elif tier == "international":
+            queries = [
+                f"LEGO store online shop {search_location} buy sets",
+                f"toy store {search_location} LEGO retailer website",
+                f"LEGO sets buy online {search_location} delivery",
+            ]
+        else:  # local
+            queries = [
+                f"LEGO store online shop {search_location} buy sets",
+                f"toy store {search_location} LEGO official retailer website",
+                f"buy LEGO {search_location} online shop delivery",
+            ]
         all_results = []
 
         async with httpx.AsyncClient(
@@ -349,18 +374,35 @@ async def stream_discover_stores(
             yield "data: [DONE]\n\n"
             return
 
-        prompt = f"""You are analyzing web search results to find legitimate LEGO stores in {region}.
+        # Build tier-aware AI prompt
+        tier_instruction = {
+            "official": "official brand manufacturer stores (like CaDA, Mould King, Reobrix, Cobi) that sell their own building block products directly",
+            "international": f"online retailers that are PHYSICALLY BASED IN or PRIMARILY SERVE {search_location} — they must have a local domain (.ae, .sa, .kw etc) OR explicitly mention {search_location} in their URL/description",
+            "local": f"local toy stores physically located in {search_location} that sell LEGO products online",
+        }.get(tier, f"LEGO stores in {search_location}")
+
+        geo_filter = ""
+        if tier == "international" and search_location:
+            geo_filter = f"""
+IMPORTANT GEOGRAPHIC FILTER:
+- ONLY include stores that are based in or primarily serve {search_location}
+- REJECT any US, UK, or global stores (Target, Best Buy, Amazon, ToysRUs, BrickLink etc)
+- REJECT stores unless their URL contains a local country indicator or they explicitly serve {search_location}
+- If unsure, EXCLUDE the store
+"""
+
+        prompt = f"""You are analyzing web search results to find legitimate stores.
 
 Here are the search results:
 {json.dumps(unique_results, indent=2)}
 
-From these results, identify stores that:
-- Actually sell LEGO products online (not just mention LEGO)
+From these results, identify {tier_instruction}.
+{geo_filter}
+Criteria:
+- Actually sell products online (not just mention them)
 - Have a real e-commerce website
-- Are based in or specifically serve {region}
-- Are NOT social media pages, news articles, or directories
-
-Already tracked (exclude): {', '.join(hardcoded_store_domains)}
+- Are NOT social media pages, news articles, Wikipedia, or directories
+- Are NOT already tracked: {', '.join(hardcoded_store_domains)}
 
 Return ONLY a JSON array, no other text:
 [

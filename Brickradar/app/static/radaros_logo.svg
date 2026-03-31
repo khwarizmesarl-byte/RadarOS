@@ -1,0 +1,34 @@
+<svg width="120" height="32" viewBox="0 0 120 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes sweep-logo { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+      @keyframes pulse-logo { 0%{r:5;opacity:.8} 100%{r:14;opacity:0} }
+      @media (prefers-reduced-motion: no-preference) {
+        .sweep-logo { animation: sweep-logo 4s linear infinite; transform-origin: 16px 16px; }
+        .pulse-logo { animation: pulse-logo 2.4s ease-out infinite; }
+      }
+    </style>
+    <clipPath id="lc"><circle cx="16" cy="16" r="14"/></clipPath>
+  </defs>
+
+  <!-- Radar icon -->
+  <circle cx="16" cy="16" r="14" fill="#050B18"/>
+  <circle cx="16" cy="16" r="14" fill="none" stroke="#534AB7" stroke-width="0.8" opacity="0.6"/>
+  <circle cx="16" cy="16" r="9"  fill="none" stroke="#534AB7" stroke-width="0.6" opacity="0.4"/>
+  <circle cx="16" cy="16" r="5"  fill="none" stroke="#7F77DD" stroke-width="0.6" opacity="0.5"/>
+  <line x1="16" y1="2"  x2="16" y2="30" stroke="#534AB7" stroke-width="0.5" opacity="0.3"/>
+  <line x1="2"  y1="16" x2="30" y2="16" stroke="#534AB7" stroke-width="0.5" opacity="0.3"/>
+
+  <circle class="pulse-logo" cx="16" cy="16" r="5" fill="none" stroke="#7F77DD" stroke-width="1"/>
+
+  <g class="sweep-logo" clip-path="url(#lc)">
+    <path fill="#7F77DD" fill-opacity="0.15" d="M16,16 L30,2 A14,14,0,0,1,30,16 Z"/>
+    <line x1="16" y1="16" x2="30" y2="2" stroke="#7F77DD" stroke-width="1" opacity="0.85"/>
+  </g>
+
+  <circle cx="22" cy="10" r="1.5" fill="#AFA9EC" opacity="0.9"/>
+  <circle cx="16" cy="16" r="2"   fill="#7F77DD"/>
+
+  <!-- Wordmark -->
+  <text x="36" y="20" fill="#EEEDFE" font-family="system-ui,sans-serif" font-size="14" font-weight="700" letter-spacing="-0.3">Radar<tspan fill="#7F77DD">OS</tspan></text>
+</svg>

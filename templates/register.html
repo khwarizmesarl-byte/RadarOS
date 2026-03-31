@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — RadarOS</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020817;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+  .card{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:2rem;width:100%;max-width:480px;}
+  .logo{text-align:center;margin-bottom:1.5rem;}
+  .logo img{height:36px;}
+  .logo h1{font-size:1.1rem;font-weight:700;color:#EEEDFE;margin-top:0.5rem;}
+  .logo p{font-size:0.75rem;color:#475569;margin-top:2px;}
+  .step{display:none;} .step.active{display:block;}
+  .step-dots{display:flex;justify-content:center;gap:6px;margin-bottom:1.5rem;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#1e293b;transition:all 0.2s;}
+  .dot.active{background:#6366f1;width:20px;border-radius:4px;}
+  .dot.done{background:#34d399;}
+  label{font-size:0.72rem;color:#64748b;display:block;margin-bottom:4px;}
+  input,select{width:100%;background:#020817;border:1px solid #1e293b;border-radius:8px;padding:0.6rem 0.85rem;font-size:0.875rem;color:#e2e8f0;outline:none;transition:border 0.15s;margin-bottom:0.75rem;}
+  input:focus,select:focus{border-color:#6366f1;}
+  .btn{width:100%;background:#6366f1;color:#fff;border:none;border-radius:8px;padding:0.65rem;font-size:0.875rem;font-weight:600;cursor:pointer;margin-top:0.5rem;transition:background 0.15s;}
+  .btn:hover{background:#4f46e5;}
+  .btn:disabled{background:#334155;cursor:not-allowed;}
+  .btn-outline{background:transparent;border:1px solid #1e293b;color:#64748b;}
+  .btn-outline:hover{border-color:#334155;background:#1e293b;color:#e2e8f0;}
+  .error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;color:#f87171;margin-bottom:0.75rem;display:none;}
+  .info{background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:#a5b4fc;margin-bottom:0.75rem;}
+  .plan-card{border:1px solid #1e293b;border-radius:10px;padding:0.85rem;margin-bottom:0.5rem;cursor:pointer;transition:all 0.15s;}
+  .plan-card:hover{border-color:#6366f1;}
+  .plan-card.selected{border-color:#6366f1;background:rgba(99,102,241,0.08);}
+  .plan-card.trial{border-color:#f59e0b;}
+  .plan-name{font-weight:700;font-size:0.88rem;}
+  .plan-price{color:#fcd34d;font-size:0.82rem;margin-top:2px;}
+  .plan-features{font-size:0.72rem;color:#475569;margin-top:4px;}
+  .plan-trial{font-size:0.68rem;color:#f59e0b;margin-top:4px;font-weight:600;}
+  .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;}
+  .module-card{border:1px solid #1e293b;border-radius:10px;padding:0.75rem;cursor:pointer;transition:all 0.15s;text-align:center;}
+  .module-card:hover{border-color:#6366f1;}
+  .module-card.selected{border-color:#6366f1;background:rgba(99,102,241,0.08);}
+  .module-card.inactive{opacity:0.4;cursor:not-allowed;}
+  .module-icon{font-size:1.5rem;margin-bottom:4px;}
+  .module-name{font-size:0.78rem;font-weight:600;}
+  .module-desc{font-size:0.65rem;color:#475569;margin-top:2px;}
+  .geo-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:3px 10px;font-size:0.72rem;color:#34d399;margin-bottom:0.75rem;}
+  .vpn-badge{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.3);color:#fcd34d;}
+  .link{color:#6366f1;text-decoration:none;font-size:0.78rem;}
+  .link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="/assets/radaros_logo.svg" onerror="this.style.display='none'">
+    <h1>Create Account</h1>
+    <p>Market Intelligence Platform</p>
+  </div>
+
+  <div class="step-dots">
+    <div class="dot active" id="dot0"></div>
+    <div class="dot" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+    <div class="dot" id="dot3"></div>
+  </div>
+
+  <div class="error" id="errMsg"></div>
+
+  <!-- Step 0: Module selection -->
+  <div class="step active" id="step0">
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;">Choose your module</div>
+    <div class="module-grid" id="moduleGrid">
+      <div class="module-card" style="opacity:0.4;cursor:not-allowed;"><div class="module-icon">⏳</div><div class="module-name">Loading...</div></div>
+    </div>
+    <button class="btn" onclick="nextStep()" id="btn0" disabled>Continue →</button>
+  </div>
+
+  <!-- Step 1: Country & Plan -->
+  <div class="step" id="step1">
+    <div id="geoInfo" class="geo-badge">📍 Detecting location...</div>
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;">Select your plan</div>
+    <div id="plansList">Loading plans...</div>
+    <div style="margin-top:0.5rem;">
+      <label>Not your country?</label>
+      <select id="countryOverride" onchange="loadPlans(this.value)" style="margin-bottom:0.5rem;">
+        <option value="">-- Select country --</option>
+        <option value="LB">🇱🇧 Lebanon</option>
+        <option value="AE">🇦🇪 UAE</option>
+        <option value="SA">🇸🇦 Saudi Arabia</option>
+        <option value="KW">🇰🇼 Kuwait</option>
+        <option value="NL">🇳🇱 Netherlands</option>
+        <option value="DE">🇩🇪 Germany</option>
+        <option value="GB">🇬🇧 United Kingdom</option>
+        <option value="XX">🌍 Other</option>
+      </select>
+    </div>
+    <button class="btn" onclick="nextStep()" id="btn1" disabled>Continue →</button>
+    <button class="btn btn-outline" onclick="prevStep()" style="margin-top:0.4rem;">← Back</button>
+  </div>
+
+  <!-- Step 2: Account details -->
+  <div class="step" id="step2">
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;">Your account details</div>
+    <label>Full Name</label>
+    <input type="text" id="regName" placeholder="e.g. John Doe">
+    <label>Email Address</label>
+    <input type="email" id="regEmail" placeholder="you@email.com">
+    <label>Password</label>
+    <input type="password" id="regPwd" placeholder="Min 8 characters">
+    <label>Confirm Password</label>
+    <input type="password" id="regPwd2" placeholder="Repeat password">
+    <button class="btn" onclick="nextStep()" id="btn2">Continue →</button>
+    <button class="btn btn-outline" onclick="prevStep()" style="margin-top:0.4rem;">← Back</button>
+  </div>
+
+  <!-- Step 3: Confirm -->
+  <div class="step" id="step3">
+    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;">Confirm & Create Account</div>
+    <div class="info" id="summaryBox"></div>
+    <button class="btn" onclick="submitRegister()" id="btn3">Create Account →</button>
+    <button class="btn btn-outline" onclick="prevStep()" style="margin-top:0.4rem;">← Back</button>
+  </div>
+
+  <div style="text-align:center;margin-top:1rem;font-size:0.78rem;color:#475569;">
+    Already have an account? <a href="/login" class="link">Sign in</a>
+  </div>
+</div>
+
+<script>
+let currentStep = 0;
+let selectedModule = null;
+let selectedPlan   = null;
+let detectedCountry = 'XX';
+let detectedCountryName = 'Unknown';
+let vpnSuspected = false;
+const MODULE_ICONS = {brickradar:'🧱',techradar:'💻',merchrader:'🎁',outfitradar:'👗',gameradar:'🎮'};
+
+async function init() {
+  // Load modules
+  const mods = await fetch('/api/modules').then(r=>r.json());
+  const MODULE_FEATURES = {
+    brickradar:  ['Track LEGO & brick set prices','Compare local, official & international stores','Price drop alerts','RadarList watchlist'],
+    techradar:   ['Track electronics & gadgets','Compare prices across retailers','Deal alerts'],
+    merchrader:  ['Track merchandise & collectibles','Compare prices globally'],
+    outfitradar: ['Track fashion & clothing prices','Compare across brands'],
+    gameradar:   ['Track gaming & console prices','Compare across retailers'],
+  };
+  document.getElementById('moduleGrid').innerHTML = mods.map(m => `
+    <div class="module-card ${m.slug==='brickradar'?'':'inactive'}" id="mod_${m.slug}"
+         onclick="${m.slug==='brickradar'?`selectModule('${m.slug}','${m.name}')`:''}">
+      <div class="module-icon">${MODULE_ICONS[m.slug]||'📊'}</div>
+      <div class="module-name">${m.name}</div>
+      <div class="module-desc" style="font-size:0.65rem;color:#475569;margin-top:4px;text-align:left;">
+        ${m.slug==='brickradar'
+          ? (MODULE_FEATURES[m.slug]||[]).map(f=>`<div>· ${f}</div>`).join('')
+          : '<div style="color:#f59e0b;">Coming soon</div>'}
+      </div>
+    </div>`).join('');
+
+  // Detect geo
+  try {
+    const geo = await fetch('/api/geo').then(r=>r.json());
+    detectedCountry = geo.country_code || 'XX';
+    detectedCountryName = geo.country || 'Unknown';
+    vpnSuspected = geo.vpn_suspected;
+    const geoEl = document.getElementById('geoInfo');
+    geoEl.className = 'geo-badge' + (vpnSuspected?' vpn-badge':'');
+    geoEl.textContent = (vpnSuspected?'⚠ VPN detected — ':'📍 ') + detectedCountryName;
+    // Pre-select country in override
+    const sel = document.getElementById('countryOverride');
+    for(let o of sel.options) if(o.value===detectedCountry){o.selected=true;break;}
+  } catch(e) {}
+}
+
+function selectModule(slug, name) {
+  selectedModule = {slug, name};
+  document.querySelectorAll('.module-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('mod_'+slug).classList.add('selected');
+  document.getElementById('btn0').disabled = false;
+}
+
+async function loadPlans(country) {
+  if (!selectedModule) return;
+  const cc = country || detectedCountry;
+  const plans = await fetch(`/api/country-plans/${cc}/${selectedModule.slug}`).then(r=>r.json());
+  selectedPlan = null;
+  document.getElementById('btn1').disabled = true;
+  document.getElementById('plansList').innerHTML = plans.map(p => `
+    <div class="plan-card ${p.trial_days>0?'trial':''}" id="plan_${p.id}" onclick="selectPlan(${p.id},'${p.name}',${p.price},${p.trial_days},${p.trial_stores})">
+      <div class="plan-name">${p.name}</div>
+      <div class="plan-price">${p.price===0?'Free':'$'+p.price+'/mo'}</div>
+      <div class="plan-features">${p.description||''}</div>
+      ${p.trial_days>0?`<div class="plan-trial">🎁 ${p.trial_days}-day free trial · ${p.trial_stores} stores included</div>`:''}
+      ${!p.is_available&&p.trial_days>0?'<div class="plan-trial">⚠ No free stores in your region — trial included</div>':''}
+    </div>`).join('') || '<div style="color:#475569;font-size:0.8rem;">No plans available for this region.</div>';
+}
+
+function selectPlan(id, name, price, trial_days, trial_stores) {
+  selectedPlan = {id, name, price, trial_days, trial_stores};
+  document.querySelectorAll('.plan-card').forEach(c=>c.classList.remove('selected'));
+  const el = document.getElementById('plan_'+id);
+  if(el) el.classList.add('selected');
+  document.getElementById('btn1').disabled = false;
+}
+
+function nextStep() {
+  const err = document.getElementById('errMsg');
+  err.style.display = 'none';
+
+  if (currentStep===0 && !selectedModule) { showErr('Please select a module'); return; }
+  if (currentStep===1 && !selectedPlan)   { showErr('Please select a plan'); return; }
+  if (currentStep===2) {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const pwd = document.getElementById('regPwd').value;
+    const pwd2 = document.getElementById('regPwd2').value;
+    if (!name||!email||!pwd) { showErr('All fields are required'); return; }
+    if (pwd.length<8) { showErr('Password must be at least 8 characters'); return; }
+    if (pwd!==pwd2)   { showErr('Passwords do not match'); return; }
+    // Build summary
+    const country = document.getElementById('countryOverride').value || detectedCountry;
+    document.getElementById('summaryBox').innerHTML = `
+      <strong>${name}</strong><br>
+      ${email}<br>
+      Module: <strong>${selectedModule.name}</strong><br>
+      Plan: <strong>${selectedPlan.name}</strong> ${selectedPlan.price===0?'(Free)':'($'+selectedPlan.price+'/mo)'}
+      ${selectedPlan.trial_days>0?`<br>Trial: <strong>${selectedPlan.trial_days} days</strong>`:''}
+      <br>Country: <strong>${detectedCountryName}</strong>${vpnSuspected?' ⚠ VPN':''}`;
+  }
+  // Load plans when moving TO step 1
+  if (currentStep===0) {
+    loadPlans(document.getElementById('countryOverride').value||detectedCountry);
+  }
+
+  document.getElementById('step'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.add('done');
+  currentStep++;
+  document.getElementById('step'+currentStep).classList.add('active');
+  document.getElementById('dot'+currentStep).classList.add('active');
+}
+
+function prevStep() {
+  document.getElementById('step'+currentStep).classList.remove('active');
+  document.getElementById('dot'+currentStep).classList.remove('active');
+  currentStep--;
+  document.getElementById('step'+currentStep).classList.add('active');
+  document.getElementById('dot'+currentStep).classList.remove('done');
+  document.getElementById('dot'+currentStep).classList.add('active');
+}
+
+function showErr(msg) {
+  const err = document.getElementById('errMsg');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+async function submitRegister() {
+  const btn = document.getElementById('btn3');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  const country = document.getElementById('countryOverride').value || detectedCountry;
+  const body = {
+    name:        document.getElementById('regName').value.trim(),
+    email:       document.getElementById('regEmail').value.trim(),
+    password:    document.getElementById('regPwd').value,
+    country_code: country,
+    plan_id:     selectedPlan.id,
+    module_slug: selectedModule.slug,
+  };
+  try {
+    const res  = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data = await res.json();
+    if (data.ok) {
+      window.location.href = '/login?registered=1';
+    } else {
+      showErr(data.error||'Registration failed');
+      btn.disabled=false; btn.textContent='Create Account →';
+    }
+  } catch(e) {
+    showErr('Connection error. Please try again.');
+    btn.disabled=false; btn.textContent='Create Account →';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -20,17 +20,19 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
     .mono { font-family: 'JetBrains Mono', monospace; }
-    .filter-bar {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0.65rem 1.5rem; display: flex; align-items: center; gap: 0.6rem;
-      flex-wrap: wrap; position: sticky; top: 0; z-index: 40;
-    }
-    .filter-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+    .filter-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+    .sidebar { width: 200px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); min-height: 100vh; padding: 0.75rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar-section { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(99,102,241,0.07); margin-bottom: 0.25rem; }
+    .sidebar-section:last-child { border-bottom: none; }
+    .tier-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #1e293b; padding: 0.3rem 0.75rem 0.15rem; }
+    .layout-wrap { display: flex; min-height: 100vh; }
+    .content-area { flex: 1; min-width: 0; padding: 1rem 1.25rem; overflow: hidden; }
     .chip {
       display: inline-flex; align-items: center; gap: 0.35rem;
       background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18);
       border-radius: 5px; padding: 0.22rem 0.6rem; font-size: 0.7rem; font-weight: 500;
-      color: #64748b; cursor: pointer; transition: all 0.12s; user-select: none; white-space: nowrap;
+      color: #64748b; cursor: pointer; transition: all 0.12s; user-select: none;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .chip:hover { border-color: var(--accent); color: #c7d2fe; }
     .chip.on { background: rgba(99,102,241,0.18); border-color: var(--accent); color: #c7d2fe; }
@@ -61,7 +63,7 @@
 
     @media print {
       body { background: #080c14 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .filter-bar, #exportWrap, a[href="/"] { display: none !important; }
+      #exportWrap { display: none !important; }
       #kpiRow > div { break-inside: avoid; }
       .card { break-inside: avoid; border: 1px solid #334155 !important; margin-bottom: 0.5rem; }
       canvas { max-width: 100% !important; }
@@ -71,7 +73,7 @@
     @media print {
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body { background: #080c14 !important; }
-      .filter-bar, #exportWrap, a[href="/"] { display: none !important; }
+      #exportWrap { display: none !important; }
       nav, [style*="border-bottom"] > div:first-child > a { display: none !important; }
       .card { break-inside: avoid; page-break-inside: avoid; border: 1px solid #334155 !important; margin-bottom: 0.75rem; }
       #kpiRow { break-inside: avoid; }
@@ -83,6 +85,36 @@
   <script src="/static/theme.js"></script>
 </head>
 <body>
+<div style="padding:0 1.25rem;"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;padding:0.6rem 0;margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+  <div style="display:flex;align-items:center;gap:0.6rem;">
+    <a href="/" style="text-decoration:none;display:flex;align-items:center;">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:36px;width:auto;display:block;">
+  </a>
+    <span style="color:#1e293b;font-size:0.8rem;margin-left:0.5rem;">|</span>
+    <span style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-left:0.3rem;">📊 Analytics</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:2px;">
+    <a href="/" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Dashboard</a>
+    <a href="/stores" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Stores</a>
+    <a href="/official" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(217,119,6,0.12)';this.style.color='#fcd34d'" onmouseout="this.style.background='';this.style.color='#64748b'">Official</a>
+    <a href="/international" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(16,185,129,0.12)';this.style.color='#34d399'" onmouseout="this.style.background='';this.style.color='#64748b'">International</a>
+    <a href="/analytics" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Analytics</a>
+    <a href="/advanced" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">Advanced</a>
+    <a href="/radarlist" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'">RadarList</a>
+    <a href="#" onclick="document.getElementById('aboutModal').classList.add('open');return false;" style="padding:3px 9px;border-radius:5px;font-size:0.72rem;font-weight:600;color:#64748b;text-decoration:none;white-space:nowrap;" onmouseover="this.style.background='rgba(99,102,241,0.12)';this.style.color='#a5b4fc'" onmouseout="this.style.background='';this.style.color='#64748b'"<div id="userNavArea" style="display:none;align-items:center;gap:0.4rem;">
+        <span id="userNavName" style="font-size:0.7rem;color:#a5b4fc;font-weight:600;"></span>
+        <span id="userNavPlan" style="font-size:0.62rem;padding:1px 7px;border-radius:99px;background:rgba(99,102,241,0.15);color:#a5b4fc;"></span>
+        <a href="/account" style="font-size:0.7rem;color:#64748b;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background=''">Account</a>
+        <a href="/api/user/logout" style="font-size:0.7rem;color:#f87171;text-decoration:none;padding:3px 8px;border-radius:5px;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background=''">Logout</a>
+      </div>
+      <a bout</a>
+  </div>
+</div></div>
+<div style="display:flex;align-items:center;gap:0.5rem;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:0.5rem 0.9rem;margin-bottom:1rem;font-size:0.75rem;color:#94a3b8;">
+  <span style="color:#6366f1;">ℹ</span>
+  Showing <strong style="color:#a5b4fc;">local stores only</strong> — Official &amp; International analysis coming soon
+</div>
+
 
 <!-- Nav -->
 <div style="padding:0.9rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -114,18 +146,30 @@
 </div>
 
 <!-- Filter Bar -->
-<div class="filter-bar">
-  <span class="filter-label">Stores</span>
-  <div id="storeChips" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
-  <div class="sep"></div>
-  <span class="filter-label">Brands</span>
-  <div id="brandChips" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
-  <div class="sep"></div>
-  <button onclick="resetFilters()" style="font-size:0.68rem;color:var(--muted);background:none;border:1px solid rgba(99,102,241,0.15);border-radius:5px;cursor:pointer;padding:0.2rem 0.5rem;transition:all 0.12s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='#c7d2fe'" onmouseout="this.style.borderColor='rgba(99,102,241,0.15)';this.style.color='var(--muted)'">Reset ×</button>
+<div class="layout-wrap">
+<!-- Sidebar -->
+<div class="sidebar" id="filterSidebar">
+  <div style="padding:0.5rem 0.75rem;border-bottom:1px solid rgba(99,102,241,0.1);margin-bottom:0.25rem;display:flex;align-items:center;justify-content:space-between;">
+    <span class="filter-label" style="color:#64748b;">Filters</span>
+    <button onclick="resetFilters()" style="font-size:0.62rem;color:#475569;background:none;border:1px solid rgba(99,102,241,0.15);border-radius:4px;cursor:pointer;padding:0.15rem 0.4rem;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='#475569'">Reset</button>
+  </div>
+
+  <!-- Stores by tier -->
+  <div class="tier-label">🏪 Local</div>
+  <div id="storeChipsLocal" style="padding:0 0.5rem 0.5rem;display:flex;flex-direction:column;gap:3px;"></div>
+  <div class="tier-label">🏭 Official</div>
+  <div id="storeChipsOfficial" style="padding:0 0.5rem 0.5rem;display:flex;flex-direction:column;gap:3px;"></div>
+  <div class="tier-label">🌍 International</div>
+  <div id="storeChipsIntl" style="padding:0 0.5rem 0.5rem;display:flex;flex-direction:column;gap:3px;"></div>
+
+  <!-- Brands -->
+  <div style="height:1px;background:rgba(99,102,241,0.08);margin:0.4rem 0;"></div>
+  <div class="tier-label">Brands</div>
+  <div id="brandChips" style="padding:0 0.5rem 0.5rem;display:flex;flex-direction:column;gap:3px;max-height:300px;overflow-y:auto;"></div>
 </div>
 
 <!-- Content -->
-<div style="padding:1.25rem 1.5rem;">
+<div class="content-area">
 
   <!-- KPIs -->
   <div id="kpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.7rem;margin-bottom:1.2rem;"></div>
@@ -205,17 +249,39 @@ function toggleFilter(type, val){
 }
 function resetFilters(){ SEL_STORES.clear(); SEL_BRANDS.clear(); buildChips(); renderAll(); }
 
+const STORE_TIERS = {};
+
+async function loadStoreTiers() {
+  try {
+    const res = await fetch('/api/stores');
+    const stores = await res.json();
+    stores.forEach(s => { STORE_TIERS[s.name] = s.source_type || 'local'; });
+  } catch(e) {}
+}
+
+function _chip(label, isStore, idx) {
+  const sel = isStore ? SEL_STORES : SEL_BRANDS;
+  const cls = sel.size>0 && !sel.has(label) ? 'off' : sel.has(label) ? 'on' : '';
+  const dot = isStore ? `<span style="width:6px;height:6px;border-radius:50%;background:${PAL[idx%PAL.length]};flex-shrink:0;margin-right:2px;"></span>` : '';
+  return `<div class="chip ${cls}" onclick="toggleFilter('${isStore?'stores':'brands'}','${label.replace(/'/g,"\\'")}');" style="width:100%;justify-content:flex-start;font-size:0.68rem;padding:0.25rem 0.5rem;overflow:hidden;text-overflow:ellipsis;">${dot}${label}</div>`;
+}
+
 function buildChips(){
-  const sc=document.getElementById('storeChips');
   const bc=document.getElementById('brandChips');
-  sc.innerHTML = ALL_STORES.map((s,i)=>`
-    <div class="chip ${SEL_STORES.size>0&&!SEL_STORES.has(s)?'off':SEL_STORES.has(s)?'on':''}"
-         onclick="toggleFilter('stores','${s}')">
-      <span style="width:5px;height:5px;border-radius:50%;background:${PAL[i%PAL.length]};flex-shrink:0"></span>${s}
-    </div>`).join('');
-  bc.innerHTML = ALL_BRANDS.map(b=>`
-    <div class="chip ${SEL_BRANDS.size>0&&!SEL_BRANDS.has(b)?'off':SEL_BRANDS.has(b)?'on':''}"
-         onclick="toggleFilter('brands','${b.replace(/'/g,"\\'")}')">${b}</div>`).join('');
+  const localEl    = document.getElementById('storeChipsLocal');
+  const officialEl = document.getElementById('storeChipsOfficial');
+  const intlEl     = document.getElementById('storeChipsIntl');
+
+  if (localEl) {
+    const local    = ALL_STORES.filter(s => (STORE_TIERS[s]||'local') === 'local');
+    const official = ALL_STORES.filter(s => (STORE_TIERS[s]||'local') === 'official');
+    const intl     = ALL_STORES.filter(s => (STORE_TIERS[s]||'local') === 'international');
+    localEl.innerHTML    = local.map(s => _chip(s, true, ALL_STORES.indexOf(s))).join('');
+    officialEl.innerHTML = official.map(s => _chip(s, true, ALL_STORES.indexOf(s))).join('');
+    intlEl.innerHTML     = intl.map(s => _chip(s, true, ALL_STORES.indexOf(s))).join('');
+  }
+
+  bc.innerHTML = ALL_BRANDS.map(b => _chip(b, false, 0)).join('');
 }
 
 function kill(id){ if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];} }
@@ -336,6 +402,7 @@ async function init(){
   RAW={brand,arrivals,theme,discount,expensive};
   ALL_STORES=[...new Set(brand.map(r=>r.store))].sort();
   ALL_BRANDS=[...new Set(brand.map(r=>r.brand))].sort();
+  await loadStoreTiers();
   buildChips();
   renderAll();
 
@@ -424,5 +491,76 @@ function exportAllCharts() {
   };
   </script>
   <script src="/static/ai_assistant.js"></script>
+
+<style>
+  .about-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+  .about-overlay.open{display:flex;}
+  .about-card{background:#0d1420;border:1px solid rgba(99,102,241,0.2);border-radius:20px;padding:2.5rem 3rem;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.8);max-width:400px;width:90%;}
+  @keyframes popIn{from{opacity:0;transform:scale(0.92);}to{opacity:1;transform:scale(1);}}
+</style>
+<div class="about-overlay" id="aboutModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="about-card">
+    <img src="/static/brickradar_logo.png" alt="BrickRadar" style="height:48px;width:auto;display:block;margin:0 auto 1.5rem;">
+    <div style="height:1px;background:rgba(99,102,241,0.12);margin-bottom:1.5rem"></div>
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.9rem">Developed by</div>
+    <a href="https://www.khwarizme.com/" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:1.25rem;text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <div style="background:#fff;border-radius:12px;padding:0.75rem 1.5rem;">
+        <img src="/static/khwarizme_logo.png" alt="Khwarizme" style="height:52px;width:auto;display:block;">
+      </div>
+    </a>
+    <div style="font-size:0.72rem;color:#64748b;font-family:monospace;margin-bottom:1.75rem">© 2026 · All rights reserved</div>
+    <button onclick="document.getElementById('aboutModal').classList.remove('open')"
+      style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:0.45rem 1.75rem;font-size:0.78rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+
+</div></div>
+<script>
+(async function() {
+  try {
+    const ctx = await fetch('/api/user/features').then(r=>r.json());
+    if (!ctx) return;
+    if (ctx.logged_in) {
+      const a = document.getElementById('userNavArea');
+      if (a) {
+        a.style.display = 'flex';
+        const n = document.getElementById('userNavName');
+        const p = document.getElementById('userNavPlan');
+        if (n) n.textContent = ctx.name;
+        if (p) p.textContent = ctx.plan_name;
+      }
+    }
+    const f = ctx.features || {};
+    // Gate settings and DB tools for free plan
+    const featureGates = [
+      {href:'/official',key:'official'},{href:'/international',key:'international'},
+      {href:'/analytics',key:'analytics'},{href:'/advanced',key:'advanced'},
+      {href:'/analytics/official',key:'analytics'},{href:'/analytics/international',key:'analytics'},
+    ];
+    document.querySelectorAll('a[href]').forEach(a => {
+      const gate = featureGates.find(g=>a.getAttribute('href')===g.href);
+      if (!gate||f[gate.key]) return;
+      a.style.opacity='0.35'; a.style.cursor='not-allowed';
+      a.addEventListener('click',e=>{
+        e.preventDefault();
+        if(confirm('This feature requires a higher plan.\nGo to your account to upgrade?'))
+          window.location.href='/account';
+      });
+    });
+    // Gate settings and DB tools buttons for free/starter
+    if (ctx.logged_in && ['Free','Starter'].includes(ctx.plan_name)) {
+      document.querySelectorAll('[data-gate="settings"],[data-gate="dbtools"]').forEach(el=>{
+        el.style.opacity='0.35'; el.style.cursor='not-allowed';
+        el.addEventListener('click',e=>{
+          e.preventDefault(); e.stopPropagation();
+          alert('This feature requires Pro or Premium plan.');
+        });
+      });
+    }
+  } catch(e){ console.log('gate',e); }
+})();
+</script>
 </body>
 </html>
